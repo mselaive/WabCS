@@ -68,7 +68,51 @@ export function buildNavGrid(map: GameMap, cell = 0.5): NavGrid {
       }
     }
   }
-  return { cell, minX, minZ, cols, rows, walk, floor };
+  const grid: NavGrid = { cell, minX, minZ, cols, rows, walk, floor };
+
+  // Sólo lo que se alcanza caminando desde los spawns: la tapa de un barril o
+  // de los sacos es "piso" para la cuenta de arriba, pero nadie sube ahí sin
+  // saltar, y un bot que elige una isla como destino se queda sin camino.
+  const reached = new Uint8Array(cols * rows);
+  const queue: number[] = [];
+  for (const team of map.spawns) {
+    for (const s of team) {
+      const [c, r] = cellOf(grid, s.x, s.z);
+      const i = r * cols + c;
+      if (walk[i] && !reached[i]) {
+        reached[i] = 1;
+        queue.push(i);
+      }
+    }
+  }
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const c = i % cols;
+    const r = (i - c) / cols;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dc === 0 && dr === 0) continue;
+        const nc = c + dc;
+        const nr = r + dr;
+        if (!walkable(grid, nc, nr)) continue;
+        const ni = nr * cols + nc;
+        if (reached[ni]) continue;
+        // Entre dos celdas se pasa en los dos sentidos si ninguna sube más que un escalón.
+        if (!canStep(grid, i, ni) && !canStep(grid, ni, i)) continue;
+        // Si sólo se puede bajar, igual vale: el bot puede bajar de un salto.
+        if (!canStep(grid, i, ni)) continue;
+        reached[ni] = 1;
+        queue.push(ni);
+      }
+    }
+  }
+  for (let i = 0; i < cols * rows; i++) {
+    if (!reached[i]) {
+      walk[i] = 0;
+      floor[i] = NaN;
+    }
+  }
+  return grid;
 }
 
 export function navGridFor(map: GameMap): NavGrid {

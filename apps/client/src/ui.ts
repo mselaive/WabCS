@@ -1,5 +1,6 @@
 import {
   BUY_ITEMS,
+  MAPS,
   TEAM_CT,
   TEAM_NAMES,
   TEAM_T,
@@ -24,6 +25,7 @@ export interface UICallbacks {
   onTeam: (team: number) => void;
   onRounds: (win: number) => void;
   onMode: (mode: number) => void;
+  onMap: (map: number) => void;
   onChat: (text: string) => void;
   onLeave: () => void;
   onBuy: (index: number) => void;
@@ -148,6 +150,18 @@ export class UI {
     for (const btn of $("modeRow").querySelectorAll<HTMLButtonElement>("[data-mode]")) {
       btn.addEventListener("click", () => cb.onMode(Number(btn.dataset.mode)));
     }
+    // Un botón por mapa, con su nombre.
+    const mapRow = $("mapRow");
+    MAPS.forEach((m, i) => {
+      const btn = document.createElement("button");
+      btn.className = "mode-btn";
+      btn.type = "button";
+      btn.setAttribute("role", "radio");
+      btn.dataset.map = String(i);
+      btn.textContent = m.name;
+      btn.addEventListener("click", () => cb.onMap(i));
+      mapRow.append(btn);
+    });
     $("btnAddBot").addEventListener("click", () => cb.onAddBot());
     for (const btn of $("botSkillRow").querySelectorAll<HTMLButtonElement>("[data-skill]")) {
       btn.addEventListener("click", () => cb.onBotSkill(Number(btn.dataset.skill)));
@@ -238,7 +252,7 @@ export class UI {
     this.roomCode.textContent = code;
   }
 
-  updateLobby(roster: PlayerMeta[], hostId: number, myId: number, winRounds: number, botSkill = 1, mode = 0, nextIn?: number): void {
+  updateLobby(roster: PlayerMeta[], hostId: number, myId: number, winRounds: number, botSkill = 1, mode = 0, map = 0, nextIn?: number): void {
     this.roster = roster;
     this.myId = myId;
     const me = roster.find((p) => p.id === myId);
@@ -303,6 +317,10 @@ export class UI {
     }
     for (const btn of $("modeRow").querySelectorAll<HTMLButtonElement>("[data-mode]")) {
       btn.setAttribute("aria-checked", String(Number(btn.dataset.mode) === mode));
+      btn.disabled = !isHost;
+    }
+    for (const btn of $("mapRow").querySelectorAll<HTMLButtonElement>("[data-map]")) {
+      btn.setAttribute("aria-checked", String(Number(btn.dataset.map) === map));
       btn.disabled = !isHost;
     }
 

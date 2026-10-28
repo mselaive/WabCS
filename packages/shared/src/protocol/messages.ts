@@ -78,7 +78,13 @@ export interface ModeMsg {
   mode: number;
 }
 
-export type ClientMsg = ReadyMsg | InputMsg | PingMsg | StartMsg | KickMsg | AddBotMsg | TeamMsg | RoundsMsg | ChatMsg | BotSkillMsg | ModeMsg;
+/** El host elige el mapa (índice en MAPS). */
+export interface MapMsg {
+  t: "map";
+  map: number;
+}
+
+export type ClientMsg = ReadyMsg | InputMsg | PingMsg | StartMsg | KickMsg | AddBotMsg | TeamMsg | RoundsMsg | ChatMsg | BotSkillMsg | ModeMsg | MapMsg;
 
 // ------------------------------------------------------------ servidor -> cliente
 

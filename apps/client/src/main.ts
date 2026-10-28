@@ -36,6 +36,7 @@ const ui = new UI({
   onTeam: (team) => game.setTeam(team),
   onRounds: (win) => game.setRounds(win),
   onMode: (mode) => game.setMode(mode),
+  onMap: (map) => game.setMap(map),
   onChat: (text) => game.chat(text),
   onBuy: (index) => game.buy(index),
   onVolume: (volume) => game?.setVolume(volume),

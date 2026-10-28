@@ -14,6 +14,7 @@ import {
   DEFAULT_WIN_ROUNDS,
   EMPTY_ROOM_SHUTDOWN_TICKS,
   InputQueue,
+  MAPS,
   MAX_PLAYERS,
   MIN_PLAYERS,
   MODE_BOMB,
@@ -381,6 +382,18 @@ export class GameRoom extends Server<Env> {
         if (seat.playerId !== this.hostId || this.state.phase !== "lobby") return;
         if (msg.mode !== MODE_ELIM && msg.mode !== MODE_BOMB) return;
         this.mode = msg.mode;
+        this.broadcastRoster();
+        return;
+      }
+
+      case "map": {
+        if (seat.playerId !== this.hostId || this.state.phase !== "lobby") return;
+        if (!Number.isInteger(msg.map) || msg.map < 0 || msg.map >= MAPS.length) return;
+        this.mapIndex = msg.map;
+        this.map = mapByIndex(msg.map);
+        this.state.mapIndex = msg.map;
+        // La grilla de caminos del mapa nuevo, ahora y no en el primer tick.
+        if ([...this.seats.values()].some((s) => s.bot)) navGridFor(this.map);
         this.broadcastRoster();
         return;
       }

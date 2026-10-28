@@ -156,9 +156,8 @@ export class Game {
     this.viewModel = new ViewModel(this.camera);
     this.viewModel.setHidden(true);
     this.world.setEnvironment(this.renderer);
-    this.world.load(this.map);
     this.minimap = new Minimap(document.getElementById("minimap") as HTMLCanvasElement);
-    this.minimap.load(this.map);
+    this.loadMap(0);
     this.lobbyCamera();
 
     this.input.attach(this.stage);
@@ -311,6 +310,10 @@ export class Game {
     this.net?.send({ t: "mode", mode });
   }
 
+  setMap(map: number): void {
+    this.net?.send({ t: "map", map });
+  }
+
   chat(text: string): void {
     this.net?.send({ t: "chat", text });
   }
@@ -332,7 +335,7 @@ export class Game {
         this.winRounds = msg.winRounds;
         this.loadMap(msg.map);
         this.ui.setRoom(msg.room);
-        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill, this.mode);
+        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill, this.mode, msg.map);
         if (msg.phase === "lobby") this.ui.showScreen("lobby");
         document.getElementById("reconnecting")!.hidden = true;
         if (this.practiceBots > 0 && this.hostId === this.myId && msg.phase === "lobby") {
@@ -347,7 +350,9 @@ export class Game {
         this.winRounds = msg.winRounds;
         this.botSkill = msg.botSkill;
         this.mode = msg.mode;
-        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill, this.mode, msg.nextIn);
+        // El mapa elegido se ve de fondo en la sala.
+        if (this.phase === "lobby") this.loadMap(msg.map);
+        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill, this.mode, msg.map, msg.nextIn);
         return;
       case "start":
         this.loadMap(msg.map);
@@ -366,10 +371,12 @@ export class Game {
     }
   }
 
+  private mapLoaded = -1;
+
   private loadMap(index: number): void {
-    const next = mapByIndex(index);
-    if (next === this.map && this.world.scene.children.length > 0) return;
-    this.map = next;
+    if (index === this.mapLoaded) return;
+    this.mapLoaded = index;
+    this.map = mapByIndex(index);
     this.world.load(this.map);
     this.minimap.load(this.map);
   }
