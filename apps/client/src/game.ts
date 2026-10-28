@@ -1027,7 +1027,8 @@ export class Game {
   /** Los carteles de la bomba: la llevás, estás en un sitio, plantando, desactivando, la mecha. */
   private updateBombHud(x: number, z: number, team: number, hasBomb: boolean, alive: boolean): void {
     const b = this.latestBomb;
-    if (!b || this.mode !== 1 && !b) {
+    // Sin bomba (modo eliminación) o con la ronda ya decidida, nada de esto se muestra.
+    if (!b || this.latestRound?.phase === "over") {
       this.ui.setBombInfo(null);
       this.ui.setUseBar(null);
       this.ui.setSiteLabel(null);
