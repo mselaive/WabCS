@@ -29,7 +29,7 @@ export interface NavGrid {
 /** Hasta dónde se deja caer un bot sin pensarlo dos veces. */
 const MAX_DROP = 3.6;
 /** Lo que cuesta de más (en celdas) un tramo en el que se cae más que un escalón. */
-const DROP_COST = 3;
+const DROP_COST = 6;
 
 const cache = new WeakMap<GameMap, NavGrid>();
 
