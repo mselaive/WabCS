@@ -157,7 +157,8 @@ describe("el bot", () => {
     const ct = createPlayer(2, TEAM_CT);
     state.players.push(bot, ct);
     const events: SimEvent[] = [];
-    startMatch(state, 11, BODEGA, 8, events, MODE_BOMB);
+    // Semilla negativa a propósito: en el servidor sale de un XOR y puede serlo.
+    startMatch(state, -1234567, BODEGA, 8, events, MODE_BOMB);
     const mem = createBotMemory(5, 2);
     const ctMem = createBotMemory(6, 2);
     // El CT, en el rincón de adentro del garaje CT (sitio A), y el bot va al B.

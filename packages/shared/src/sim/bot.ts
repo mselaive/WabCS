@@ -123,7 +123,8 @@ function bombGoal(state: GameState, me: PlayerState, mem: BotMemory, map: GameMa
   if (state.mode !== MODE_BOMB || map.sites.length === 0) return null;
   const b = state.bomb;
   const grid = navGridFor(map);
-  const site = map.sites[mem.site % map.sites.length]!;
+  const n = map.sites.length;
+  const site = map.sites[((mem.site % n) + n) % n] ?? map.sites[0]!;
   const near = (x: number, z: number, r: number) => randomWalkableIn(grid, x - r, z - r, x + r, z + r, mem.rng);
   if (me.team === TEAM_T) {
     if (b.dropped && b.carrier < 0) return { x: b.dropped.x, z: b.dropped.z };
@@ -263,7 +264,9 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
       mem.lastKnown = null;
       mem.holdUntil = me.team === TEAM_CT ? tick + Math.floor((8 + rng() * 14) * TICK_RATE) : 0;
       // El sitio de la ronda: los T van todos al mismo (sale de la ronda y la semilla).
-      mem.site = (state.round.number + state.seed + (me.team === TEAM_CT ? Math.floor(rng() * 2) : 0)) % 2;
+      // (La semilla puede ser negativa: el módulo se hace siempre positivo.)
+      const raw = state.round.number + state.seed + (me.team === TEAM_CT ? Math.floor(rng() * 2) : 0);
+      mem.site = ((raw % 2) + 2) % 2;
       mem.bombKey = "";
     }
     mem.yaw = Math.atan2(-(0 - me.x), -(0 - me.z));
