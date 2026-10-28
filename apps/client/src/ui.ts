@@ -330,7 +330,8 @@ export class UI {
     hpEl.classList.toggle("low", hp <= 30);
     $("armor").textContent = String(armor);
     $("armorIcon").textContent = helmet ? "⛑" : "◈";
-    $("lowHp").style.opacity = hp > 0 && hp <= 30 ? "1" : "0";
+    // Con `hidden` y no con la opacidad: la animación del latido pisa la opacidad.
+    $("lowHp").hidden = !(hp > 0 && hp <= 30);
   }
 
   setMoney(money: number): void {
@@ -362,10 +363,17 @@ export class UI {
     });
   }
 
-  setCrosshair(visible: boolean, wide: boolean): void {
+  private lastGap = -1;
+
+  /** `spread` en radianes: la mira se abre proporcionalmente. */
+  setCrosshair(visible: boolean, spread: number): void {
     const ch = $("crosshair");
     ch.hidden = !visible;
-    ch.classList.toggle("wide", wide);
+    const gap = Math.round(Math.min(60, 3 + spread * 700));
+    if (gap !== this.lastGap) {
+      this.lastGap = gap;
+      ch.style.setProperty("--gap", `${gap}px`);
+    }
   }
 
   setScope(on: boolean): void {

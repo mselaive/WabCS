@@ -72,7 +72,7 @@ function sights(g: THREE.Object3D, y: number, front: number, rear: number, m: Ma
 
 function pistol(g: THREE.Group, slideMat: Mat, frameMat: Mat, len: number, tall: number): void {
   // Corredera, armazón, empuñadura inclinada, guardamonte, gatillo, caño.
-  box(g, 0.03, tall, len, 0, 0.03, -len / 2 + 0.03, slideMat);
+  box(g, 0.03, tall, len, 0, 0.03, -len / 2 + 0.03, slideMat).name = "slide";
   box(g, 0.028, 0.025, len * 0.75, 0, 0.005, -len * 0.38 + 0.02, frameMat);
   box(g, 0.027, 0.11, 0.036, 0.0, -0.045, 0.012, frameMat, 0.22);
   box(g, 0.004, 0.028, 0.04, 0, -0.02, -0.03, frameMat);
@@ -124,7 +124,7 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
       tube(g, 0.021, 0.32, 0, 0.035, -0.41, POLYMER, 12);
       tube(g, 0.009, 0.06, 0, 0.035, -0.59, STEEL, 8);
       box(g, 0.046, 0.05, 0.14, 0, 0.012, -0.3, POLYMER);
-      box(g, 0.024, 0.18, 0.046, 0, -0.06, -0.19, STEEL, 0.28);
+      box(g, 0.024, 0.18, 0.046, 0, -0.06, -0.19, STEEL, 0.28).name = "mag";
       box(g, 0.028, 0.1, 0.04, 0, -0.045, 0.0, POLYMER, 0.25);
       box(g, 0.004, 0.026, 0.045, 0, -0.018, -0.07, POLYMER);
       tube(g, 0.012, 0.2, 0, 0.038, 0.18, STEEL, 8);
@@ -143,7 +143,7 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
       tube(g, 0.009, 0.3, 0, 0.045, -0.55, STEEL, 8);
       box(g, 0.012, 0.03, 0.012, 0, 0.068, -0.62, STEEL);
       tube(g, 0.013, 0.05, 0, 0.045, -0.72, STEEL_LIGHT, 8);
-      box(g, 0.03, 0.2, 0.06, 0, -0.065, -0.16, STEEL, 0.38);
+      box(g, 0.03, 0.2, 0.06, 0, -0.065, -0.16, STEEL, 0.38).name = "mag";
       box(g, 0.03, 0.095, 0.042, 0, -0.045, 0.06, WOOD, 0.28);
       box(g, 0.004, 0.024, 0.04, 0, -0.016, -0.03, STEEL);
       box(g, 0.038, 0.062, 0.28, 0, 0.012, 0.23, WOOD_LIGHT, 0.06);
@@ -161,7 +161,7 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
       for (let i = 0; i < 4; i++) box(g, 0.05, 0.006, 0.24, 0, 0.0 + i * 0.019, -0.33, STEEL);
       tube(g, 0.008, 0.26, 0, 0.038, -0.58, STEEL, 8);
       tube(g, 0.011, 0.05, 0, 0.038, -0.7, STEEL_LIGHT, 8);
-      box(g, 0.03, 0.17, 0.05, 0, -0.06, -0.12, POLYMER, 0.05);
+      box(g, 0.03, 0.17, 0.05, 0, -0.06, -0.12, POLYMER, 0.05).name = "mag";
       box(g, 0.03, 0.095, 0.042, 0, -0.045, 0.06, POLYMER, 0.28);
       box(g, 0.004, 0.024, 0.04, 0, -0.016, -0.03, STEEL);
       tube(g, 0.015, 0.2, 0, 0.045, 0.2, POLYMER, 8);
@@ -179,7 +179,7 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
       box(g, 0.042, 0.062, 0.22, 0, 0.03, -0.05, STEEL);
       tube(g, 0.011, 0.56, 0, 0.055, -0.44, STEEL, 8);
       tube(g, 0.013, 0.46, 0, 0.022, -0.38, STEEL_LIGHT, 8);
-      box(g, 0.044, 0.05, 0.13, 0, 0.022, -0.3, WOOD, 0, 0, 0);
+      box(g, 0.044, 0.05, 0.13, 0, 0.022, -0.3, WOOD, 0, 0, 0).name = "pump";
       box(g, 0.03, 0.095, 0.042, 0, -0.04, 0.06, WOOD, 0.3);
       box(g, 0.004, 0.024, 0.04, 0, -0.014, -0.02, STEEL);
       box(g, 0.04, 0.066, 0.3, 0, 0.012, 0.22, WOOD_LIGHT, 0.08);
@@ -194,7 +194,7 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
       tube(g, 0.016, 0.1, 0, 0.045, -0.3, STEEL, 8);
       tube(g, 0.011, 0.5, 0, 0.045, -0.58, STEEL, 8);
       tube(g, 0.015, 0.06, 0, 0.045, -0.85, STEEL_LIGHT, 8);
-      box(g, 0.03, 0.08, 0.1, 0, -0.03, -0.1, STEEL);
+      box(g, 0.03, 0.08, 0.1, 0, -0.03, -0.1, STEEL).name = "mag";
       box(g, 0.03, 0.095, 0.042, 0, -0.045, 0.08, GREEN, 0.3);
       box(g, 0.004, 0.024, 0.04, 0, -0.016, 0.0, STEEL);
       box(g, 0.044, 0.07, 0.3, 0, 0.02, 0.22, GREEN, 0.04);
@@ -207,7 +207,7 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
       tube(g, 0.026, 0.06, 0, 0.115, -0.25, POLYMER, 12);
       box(g, 0.04, 0.04, 0.004, 0, 0.115, -0.282, GLASS);
       tube(g, 0.022, 0.04, 0, 0.115, 0.03, POLYMER, 12);
-      pin(g, 0.006, 0.06, 0.035, 0.045, 0.03, STEEL_LIGHT);
+      pin(g, 0.006, 0.06, 0.035, 0.045, 0.03, STEEL_LIGHT).name = "bolt";
       rightHand = [0, -0.07, 0.06];
       leftHand = [0, -0.005, -0.34];
       break;
@@ -260,18 +260,53 @@ export function muzzleOffset(id: number): THREE.Vector3 {
  * El arma en la mano, en el espacio de la cámara: balanceo al caminar,
  * retroceso al disparar, bajar para recargar, salir de abajo al cambiar.
  */
+function easeOut(t: number): number {
+  const k = Math.max(0, Math.min(1, t));
+  return 1 - (1 - k) * (1 - k);
+}
+
+function smooth(t: number): number {
+  const k = Math.max(0, Math.min(1, t));
+  return k * k * (3 - 2 * k);
+}
+
+/**
+ * El arma en la mano, en el espacio de la cámara, con sus animaciones: sale
+ * de abajo al cambiar, se balancea al caminar y se queda un poco atrás al
+ * girar, patea al disparar (y la corredera o el cerrojo se mueven), el
+ * cargador sale y entra al recargar, el cuchillo da el tajo.
+ */
 export class ViewModel {
   readonly root = new THREE.Group();
   private current = -1;
   private mesh: THREE.Group | null = null;
-  private flash: THREE.Mesh;
+  private mag: THREE.Object3D | null = null;
+  private magHome = new THREE.Vector3();
+  private slide: THREE.Object3D | null = null;
+  private slideHome = new THREE.Vector3();
+  private bolt: THREE.Object3D | null = null;
+  private boltHome = new THREE.Vector3();
+  private pump: THREE.Object3D | null = null;
+  private pumpHome = new THREE.Vector3();
+  private readonly flash: THREE.Mesh;
   private flashLeft = 0;
   private kick = 0;
   private kickSide = 0;
+  private slideT = 0;
+  private cycleT = 0;
+  private cycleTotal = 0.45;
   private bob = 0;
-  private reloadT = 0;
+  private swayX = 0;
+  private swayY = 0;
   private drawT = 0;
+  private drawTotal = 0.3;
+  private reloadT = 0;
+  private reloadTotal = 1;
+  private wasReloading = false;
+  private knifeT = 0;
+  private landDip = 0;
   private hidden = false;
+  private time = 0;
 
   constructor(camera: THREE.Camera) {
     camera.add(this.root);
@@ -290,7 +325,20 @@ export class ViewModel {
     this.mesh = buildWeaponMesh(id, true);
     this.root.add(this.mesh);
     this.current = id;
-    this.drawT = weapon(id).drawTicks * 0.05;
+    const find = (name: string, home: THREE.Vector3): THREE.Object3D | null => {
+      const o = this.mesh!.getObjectByName(name) ?? null;
+      if (o) home.copy(o.position);
+      return o;
+    };
+    this.mag = find("mag", this.magHome);
+    this.slide = find("slide", this.slideHome);
+    this.bolt = find("bolt", this.boltHome);
+    this.pump = find("pump", this.pumpHome);
+    this.drawTotal = Math.max(0.15, weapon(id).drawTicks * 0.05);
+    this.drawT = this.drawTotal;
+    this.reloadT = 0;
+    this.knifeT = 0;
+    this.cycleT = 0;
     this.flash.position.copy(muzzleOffset(id));
   }
 
@@ -303,39 +351,144 @@ export class ViewModel {
     this.root.visible = !h;
   }
 
-  /** Un tiro salió: retroceso y fogonazo. */
+  /** Un tiro salió: retroceso, fogonazo, corredera; el cerrojo o la bomba después. */
   fire(): void {
     const w = weapon(this.current);
-    this.kick = Math.min(1, this.kick + 0.5 + w.kick * 6);
-    this.kickSide = (Math.random() - 0.5) * 0.02;
-    if (w.melee === 0) this.flashLeft = 0.05;
+    if (w.melee > 0) {
+      this.knifeT = 0.28;
+      return;
+    }
+    this.kick = Math.min(1, this.kick + 0.45 + w.kick * 5);
+    this.kickSide = (Math.random() - 0.5) * 0.03;
+    this.flashLeft = 0.05;
+    this.slideT = 1;
+    if (this.bolt || this.pump) {
+      this.cycleTotal = Math.min(0.9, Math.max(0.3, w.fireTicks * 0.05 * 0.6));
+      this.cycleT = this.cycleTotal;
+    }
   }
 
-  reload(): void {
-    this.reloadT = weapon(this.current).reloadTicks * 0.05;
+  reload(totalSeconds: number): void {
+    this.reloadTotal = Math.max(0.4, totalSeconds);
+    this.reloadT = this.reloadTotal;
   }
 
-  /** `speed` en m/s, `dt` en segundos. */
-  update(dt: number, speed: number, onGround: boolean, reloading: boolean): void {
+  /** Acaba de caer al piso: el arma se hunde un poco. */
+  land(strength: number): void {
+    this.landDip = Math.min(1, this.landDip + strength);
+  }
+
+  /** Dónde sale la vaina, en el mundo (la ventana de expulsión, a la derecha del arma). */
+  ejectPoint(camera: THREE.Camera, out: THREE.Vector3): THREE.Vector3 {
+    out.set(0.03, 0.04, -0.12).add(this.root.position);
+    camera.updateMatrixWorld();
+    return camera.localToWorld(out);
+  }
+
+  /**
+   * `speed` en m/s, `dt` en segundos, `lookDx`/`lookDy` lo que giró la cámara
+   * en este cuadro (radianes), para que el arma se quede un poco atrás.
+   */
+  update(dt: number, speed: number, onGround: boolean, reloading: boolean, lookDx = 0, lookDy = 0): void {
     if (this.hidden || !this.mesh) return;
-    this.bob += dt * (onGround ? Math.min(speed, 6) * 2.4 : 0.8);
-    const amp = onGround ? Math.min(speed / 5, 1) * 0.012 : 0.004;
+    this.time += dt;
+    const w = weapon(this.current);
+
+    // Balanceo al caminar (un ocho acostado) y respiración quieto.
+    this.bob += dt * (onGround ? Math.min(speed, 6) * 2.3 : 0.8);
+    const amp = onGround ? Math.min(speed / 5, 1) * 0.014 : 0.004;
     const bx = Math.sin(this.bob) * amp;
-    const by = Math.abs(Math.cos(this.bob)) * amp * 0.8;
+    const by = -Math.abs(Math.cos(this.bob)) * amp * 0.8;
+    const idleX = Math.sin(this.time * 1.3) * 0.0025;
+    const idleY = Math.sin(this.time * 2.1) * 0.002;
 
-    this.kick = Math.max(0, this.kick - dt * 7);
-    const k = this.kick;
+    // Se queda atrás cuando girás.
+    const k = 1 - Math.exp(-dt * 14);
+    this.swayX += (-lookDx * 0.5 - this.swayX) * k;
+    this.swayY += (-lookDy * 0.5 - this.swayY) * k;
+    this.swayX = Math.max(-0.06, Math.min(0.06, this.swayX));
+    this.swayY = Math.max(-0.06, Math.min(0.06, this.swayY));
 
+    this.kick = Math.max(0, this.kick - dt * 8);
+    this.slideT = Math.max(0, this.slideT - dt * 12);
+    this.landDip = Math.max(0, this.landDip - dt * 5);
+    const kk = this.kick;
+
+    // Sacar el arma: sube desde abajo, girando.
     this.drawT = Math.max(0, this.drawT - dt);
+    const drawK = 1 - easeOut(1 - this.drawT / this.drawTotal);
+
+    // Recargar: el arma se inclina, el cargador sale, vuelve a entrar, y un golpe final.
+    if (reloading && !this.wasReloading && this.reloadT <= 0) this.reload(w.reloadTicks * 0.05);
+    this.wasReloading = reloading;
     if (!reloading) this.reloadT = 0;
     else this.reloadT = Math.max(0, this.reloadT - dt);
-    const w = weapon(this.current);
-    const reloadTotal = Math.max(0.1, w.reloadTicks * 0.05);
-    const rp = reloading ? Math.sin(Math.PI * Math.min(1, 1 - this.reloadT / reloadTotal)) : 0;
-    const drawDip = this.drawT > 0 ? Math.min(1, this.drawT / Math.max(0.05, w.drawTicks * 0.05)) : 0;
+    const rt = reloading ? 1 - this.reloadT / this.reloadTotal : 0;
+    let tiltX = 0;
+    let tiltZ = 0;
+    let dropY = 0;
+    if (reloading) {
+      const inOut = Math.sin(Math.PI * Math.min(1, rt));
+      tiltZ = 0.4 * inOut;
+      tiltX = 0.18 * inOut;
+      dropY = -0.06 * inOut;
+      if (this.mag) {
+        let magOff = 0;
+        let visible = true;
+        if (rt < 0.3) magOff = -0.3 * smooth((rt - 0.08) / 0.22);
+        else if (rt < 0.55) visible = false;
+        else if (rt < 0.85) magOff = -0.3 * (1 - smooth((rt - 0.55) / 0.3));
+        this.mag.visible = visible;
+        this.mag.position.set(this.magHome.x, this.magHome.y + magOff, this.magHome.z + (visible ? magOff * 0.3 : 0));
+      }
+      // El golpe final (cerrojo o palmada al cargador).
+      if (rt > 0.85) tiltX += -0.12 * Math.sin(Math.PI * (rt - 0.85) / 0.15);
+    } else if (this.mag) {
+      this.mag.visible = true;
+      this.mag.position.copy(this.magHome);
+    }
 
-    this.mesh.position.set(bx + this.kickSide * k, by - rp * 0.18 - drawDip * 0.3, k * 0.06);
-    this.mesh.rotation.set(-k * 0.25 + rp * 0.5 + drawDip * 0.9, rp * 0.3, this.kickSide * k * 3);
+    // Corredera de la pistola: atrás con el tiro.
+    if (this.slide) this.slide.position.set(this.slideHome.x, this.slideHome.y, this.slideHome.z + 0.035 * this.slideT);
+    // Cerrojo del AWP y bomba de la escopeta: un ciclo después del tiro.
+    let cycleTilt = 0;
+    if (this.cycleT > 0) {
+      this.cycleT = Math.max(0, this.cycleT - dt);
+      const c = 1 - this.cycleT / this.cycleTotal;
+      const back = Math.sin(Math.PI * Math.min(1, Math.max(0, (c - 0.15) / 0.7)));
+      if (this.bolt) {
+        this.bolt.position.set(this.boltHome.x, this.boltHome.y + 0.03 * back, this.boltHome.z + 0.06 * back);
+        cycleTilt = 0.08 * back;
+      }
+      if (this.pump) this.pump.position.set(this.pumpHome.x, this.pumpHome.y, this.pumpHome.z + 0.09 * back);
+    } else {
+      if (this.bolt) this.bolt.position.copy(this.boltHome);
+      if (this.pump) this.pump.position.copy(this.pumpHome);
+    }
+
+    // El tajo del cuchillo.
+    let knifeX = 0;
+    let knifeZ = 0;
+    let knifeRot = 0;
+    if (this.knifeT > 0) {
+      this.knifeT = Math.max(0, this.knifeT - dt);
+      const t = 1 - this.knifeT / 0.28;
+      const s = Math.sin(Math.PI * t);
+      knifeRot = -0.9 * s;
+      knifeZ = -0.12 * s;
+      knifeX = -0.06 * s;
+    }
+
+    this.mesh.position.set(
+      bx + idleX + this.swayX + this.kickSide * kk + knifeX,
+      by + idleY + this.swayY * 0.6 - drawK * 0.35 - this.landDip * 0.05 + dropY,
+      kk * 0.05 + knifeZ,
+    );
+    this.mesh.rotation.set(
+      -kk * 0.14 + drawK * 1.1 + tiltX + knifeRot + cycleTilt + this.landDip * 0.08,
+      this.swayX * 0.8 + drawK * 0.25,
+      this.kickSide * kk * 2 + tiltZ,
+    );
 
     if (this.flashLeft > 0) {
       this.flashLeft -= dt;

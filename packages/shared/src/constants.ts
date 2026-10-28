@@ -59,7 +59,8 @@ export const MAX_HP = 100;
 export const MAX_ARMOR = 100;
 
 export const GRAVITY = 20;
-export const JUMP_SPEED = 7.0;
+/** Con 20 de gravedad, 7,3 m/s de salto llegan a 1,33 m: lo justo para subirse a un cajón de 1,2. */
+export const JUMP_SPEED = 7.3;
 /** Caminar (Shift) y agacharse frenan: y caminar no hace ruido. */
 export const WALK_FACTOR = 0.52;
 export const CROUCH_FACTOR = 0.34;

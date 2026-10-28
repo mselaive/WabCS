@@ -169,6 +169,30 @@ export class Audio {
     this.noise(0.06, 500, 0.35 * gain, pan);
   }
 
+  /** Tus propios pasos: más apagados, alternando un poco el tono. */
+  ownStep(left: boolean): void {
+    if (!this.ctx) return;
+    this.noise(0.05, left ? 420 : 520, 0.16, left ? -0.15 : 0.15);
+  }
+
+  /** Caer al piso después de un salto. */
+  land(hard: boolean): void {
+    if (!this.ctx) return;
+    this.noise(hard ? 0.12 : 0.07, 300, hard ? 0.45 : 0.25, 0);
+  }
+
+  /** Sacar un arma: un clic metálico. */
+  draw(): void {
+    if (!this.ctx) return;
+    this.noise(0.03, 2800, 0.18, 0.2, "highpass");
+  }
+
+  /** Gatillo con el cargador vacío. */
+  dryFire(): void {
+    if (!this.ctx) return;
+    this.tone(1400, 0.03, 0.12, 0.2, "square");
+  }
+
   /** Le pegaste a alguien (el tic del hitmarker); en la cabeza, un ding. */
   hitmarker(head: boolean): void {
     if (!this.ctx) return;

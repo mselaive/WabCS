@@ -12,6 +12,7 @@ import {
   BUY_TICKS,
   FOV,
   FOV_SCOPED,
+  HEAD_HEIGHT,
   HIT_BODY,
   HIT_HEAD,
   HIT_WORLD,
@@ -19,6 +20,7 @@ import {
   KNIFE,
   MS_PER_TICK,
   PICKUP_RANGE,
+  PLAYER_HALF_W,
   ROUND_TICKS,
   SP_ID,
   TEAM_NAMES,
@@ -26,9 +28,12 @@ import {
   ZONE_HEAD,
   distXZ,
   eyeHeightOf,
+  heightOf,
   mapByIndex,
+  rayAabb,
   recoilOffset,
   shotRange,
+  spreadOf,
   raycastBoxes,
   unpackPlayer,
   unpackRound,
@@ -42,6 +47,7 @@ import {
   type SnapshotMsg,
   type SnapStanding,
   type UnpackedDrop,
+  type UnpackedPlayer,
   type UnpackedRound,
 } from "@wabcs/shared";
 import { Audio } from "./audio.js";
@@ -101,6 +107,18 @@ export class Game {
   /** Sacudida de la cámara por los tiros (radianes), que vuelve sola. */
   private punchPitch = 0;
   private punchYaw = 0;
+  /** El último cuadro interpolado de los demás: contra esto se predicen los impactos. */
+  private lastInterp: InterpolatedFrame | null = null;
+  /** Impactos que ya se mostraron al predecir: el `hit` del servidor no los repite. */
+  private predictedHits = 0;
+  private stepDist = 1.2;
+  private stepLeft = false;
+  private wasOnGround = true;
+  private lastVy = 0;
+  private landDip = 0;
+  private prevYaw = 0;
+  private prevPitch = 0;
+  private prevShoot = false;
 
   constructor(private readonly ui: UI) {}
 
@@ -415,8 +433,12 @@ export class Game {
           this.audio.hurt();
         }
         if (ev.byId === this.myId) {
-          this.ui.hitmarker(ev.zone === ZONE_HEAD);
-          this.audio.hitmarker(ev.zone === ZONE_HEAD);
+          // Si ya se mostró al predecir, no se repite.
+          if (this.predictedHits > 0) this.predictedHits--;
+          else {
+            this.ui.hitmarker(ev.zone === ZONE_HEAD);
+            this.audio.hitmarker(ev.zone === ZONE_HEAD);
+          }
         }
         return;
       case "kill": {
@@ -605,6 +627,7 @@ export class Game {
     const frame = this.buffer.sample(now - INTERP_DELAY_MS);
     if (frame) {
       this.viewTick = frame.tick;
+      this.lastInterp = frame;
       this.updateOthers(frame, dt);
       this.world.updateDrops(frame.drops);
       this.updateRoundHud(frame.round);
@@ -630,30 +653,61 @@ export class Game {
       if (s.active !== this.prevActive) {
         this.lastSlot = this.prevActive >= 0 ? this.prevActive : this.lastSlot;
         this.prevActive = s.active;
+        this.audio.draw();
+      }
+
+      // Aterrizar: un golpe, y la cámara y el arma se hunden un instante.
+      if (s.onGround && !this.wasOnGround) {
+        const hard = this.lastVy < -6;
+        this.audio.land(hard);
+        this.viewModel.land(hard ? 1 : 0.5);
+        this.landDip = hard ? 1 : 0.5;
+      }
+      this.wasOnGround = s.onGround;
+      this.lastVy = s.vy;
+      this.landDip = Math.max(0, this.landDip - dt * 6);
+
+      // Pasos propios: corriendo en el piso, cada 1,7 m, alternando el pie.
+      const horiz = Math.hypot(s.vx, s.vz);
+      if (s.onGround && horiz > 3.2) {
+        this.stepDist += horiz * dt;
+        if (this.stepDist >= 1.7) {
+          this.stepDist = 0;
+          this.stepLeft = !this.stepLeft;
+          this.audio.ownStep(this.stepLeft);
+        }
+      } else if (horiz < 0.5) {
+        this.stepDist = 1.2;
       }
 
       const pos = me.renderPosition(dt, this.inputAcc / MS_PER_TICK);
-      this.camera.position.set(pos.x, pos.y + eyeHeightOf({ crouch: pos.crouch }), pos.z);
+      this.camera.position.set(pos.x, pos.y + eyeHeightOf({ crouch: pos.crouch }) - this.landDip * 0.09, pos.z);
       // La sacudida es cosmética: la mira (y las balas) siguen al mouse, no a esto.
       const decay = Math.exp(-dt * 9);
       this.punchPitch *= decay;
       this.punchYaw *= decay;
       this.camera.rotation.set(this.input.pitch + this.punchPitch, this.input.yaw + this.punchYaw, 0);
 
+      const wid = s.slots[s.active] ?? KNIFE;
       if (s.reloading && !this.wasReloading) {
-        this.viewModel.reload();
+        this.viewModel.reload(weapon(wid).reloadTicks * 0.05);
         this.audio.reload(null, null);
       }
       this.wasReloading = s.reloading;
 
-      const wid = s.slots[s.active] ?? KNIFE;
       this.viewModel.setWeapon(wid);
       this.viewModel.setHidden(s.scoped);
-      this.viewModel.update(dt, Math.hypot(s.vx, s.vz), s.onGround, s.reloading);
+      let lookDx = this.input.yaw - this.prevYaw;
+      if (lookDx > Math.PI) lookDx -= Math.PI * 2;
+      if (lookDx < -Math.PI) lookDx += Math.PI * 2;
+      const lookDy = this.input.pitch - this.prevPitch;
+      this.prevYaw = this.input.yaw;
+      this.prevPitch = this.input.pitch;
+      this.viewModel.update(dt, horiz, s.onGround, s.reloading, lookDx, lookDy);
       this.input.scoped = s.scoped;
       this.applyFov(s.scoped ? FOV_SCOPED : FOV, dt);
       this.ui.setScope(s.scoped);
-      this.ui.setCrosshair(!s.scoped && weapon(wid).melee === 0, !s.onGround || Math.hypot(s.vx, s.vz) > 2);
+      this.ui.setCrosshair(!s.scoped && weapon(wid).melee === 0, spreadOf(s, weapon(wid), s.recoil));
 
       this.ui.setVitals(s.hp, s.armor, s.helmet);
       this.ui.setMoney(s.money);
@@ -665,7 +719,7 @@ export class Game {
     } else {
       this.viewModel.setHidden(true);
       this.ui.setScope(false);
-      this.ui.setCrosshair(false, false);
+      this.ui.setCrosshair(false, 0);
       this.ui.setFreezeInfo(null);
       this.ui.setPickupPrompt(null);
       this.applyFov(FOV, dt);
@@ -688,6 +742,13 @@ export class Game {
     const me = this.predictor;
     if (!me || !this.net) return;
     const input = this.input.sample(this.seq++, this.viewTick);
+    // Gatillo con todo vacío: el clic en seco.
+    if (input.shoot && !this.prevShoot) {
+      const s = me.state;
+      const w = weapon(s.slots[s.active] ?? KNIFE);
+      if (w.mag > 0 && (s.ammo[s.active] ?? 0) === 0 && (s.reserve[s.active] ?? 0) === 0) this.audio.dryFire();
+    }
+    this.prevShoot = input.shoot;
     const shot = me.apply(input, this.map, this.canActNow);
     let btn = 0;
     if (input.shoot) btn |= BTN_SHOOT;
@@ -729,17 +790,45 @@ export class Game {
     this.camera.updateMatrixWorld();
     this.camera.localToWorld(from);
     this.effects.flash(from, 14);
+    // La vaina sale hacia la derecha de la cámara.
+    const right = new THREE.Vector3(Math.cos(this.input.yaw), 0, -Math.sin(this.input.yaw));
+    this.effects.shell(this.viewModel.ejectPoint(this.camera, new THREE.Vector3()), right);
+
+    // Los rivales tal como se ven ahora: si la bala los toca, la sangre y el
+    // hitmarker salen ya; el daño lo confirma el servidor un instante después.
+    const enemies = (this.lastInterp?.players ?? []).filter((p) => p.alive && p.connected && p.team !== s.team && p.id !== this.myId);
     const hit: RayHit = { t: 0, nx: 0, ny: 0, nz: 0 };
+    let anyHit = false;
+    let anyHead = false;
     for (const d of shot.dirs) {
       let t = raycastBoxes(ox, oy, oz, d.x, d.y, d.z, this.map.boxes, shotRange(w), hit);
       const landed = t >= 0;
       if (!landed) t = Math.min(TRACER_MAX, shotRange(w));
+      let victim: UnpackedPlayer | null = null;
+      let head = false;
+      for (const e of enemies) {
+        const h = heightOf(e);
+        const te = rayAabb(ox, oy, oz, d.x, d.y, d.z, e.x, e.y + h / 2, e.z, PLAYER_HALF_W, h / 2, PLAYER_HALF_W, t);
+        if (te < 0 || te >= t) continue;
+        t = te;
+        victim = e;
+        head = oy + d.y * te - e.y > h - HEAD_HEIGHT;
+      }
       const to = new THREE.Vector3(ox + d.x * t, oy + d.y * t, oz + d.z * t);
       this.effects.tracer(from, to);
-      if (landed) {
+      if (victim) {
+        this.effects.blood(to, head);
+        anyHit = true;
+        anyHead ||= head;
+      } else if (landed) {
         this.effects.dust(to);
         this.effects.bulletHole(to, new THREE.Vector3(hit.nx, hit.ny, hit.nz));
       }
+    }
+    if (anyHit) {
+      this.predictedHits++;
+      this.ui.hitmarker(anyHead);
+      this.audio.hitmarker(anyHead);
     }
   }
 

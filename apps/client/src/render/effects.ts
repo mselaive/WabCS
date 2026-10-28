@@ -20,6 +20,13 @@ interface Flash {
   life: number;
 }
 
+interface Shell {
+  mesh: THREE.Mesh;
+  vel: THREE.Vector3;
+  spin: THREE.Vector3;
+  life: number;
+}
+
 /** Más agujeros que esto y se borra el más viejo. */
 const MAX_HOLES = 80;
 
@@ -34,6 +41,9 @@ export class Effects {
   private puffs: Puff[] = [];
   private holes: THREE.Mesh[] = [];
   private flashes: Flash[] = [];
+  private shells: Shell[] = [];
+  private readonly shellGeo = new THREE.BoxGeometry(0.012, 0.012, 0.03);
+  private readonly shellMat = new THREE.MeshStandardMaterial({ color: 0xd9b24a, metalness: 0.8, roughness: 0.35 });
   private readonly puffTex = makePuffTexture();
   private readonly holeMat = new THREE.MeshBasicMaterial({
     map: makeBulletHoleTexture(),
@@ -96,6 +106,20 @@ export class Effects {
     while (this.holes.length > MAX_HOLES) this.group.remove(this.holes.shift()!);
   }
 
+  /** Una vaina que salta por la ventana de expulsión y cae. `right` es hacia dónde sale. */
+  shell(at: THREE.Vector3, right: THREE.Vector3): void {
+    const mesh = new THREE.Mesh(this.shellGeo, this.shellMat);
+    mesh.position.copy(at);
+    mesh.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+    this.group.add(mesh);
+    const vel = right
+      .clone()
+      .multiplyScalar(1.6 + Math.random() * 0.8)
+      .add(new THREE.Vector3((Math.random() - 0.5) * 0.4, 1.6 + Math.random() * 0.6, (Math.random() - 0.5) * 0.4));
+    this.shells.push({ mesh, vel, spin: new THREE.Vector3(Math.random() * 20, Math.random() * 20, Math.random() * 20), life: 1.2 });
+    while (this.shells.length > 30) this.group.remove(this.shells.shift()!.mesh);
+  }
+
   /** La luz del fogonazo, un instante, en `at`. */
   flash(at: THREE.Vector3, intensity = 14): void {
     const f = this.flashes.reduce((a, b) => (a.life <= b.life ? a : b));
@@ -140,6 +164,27 @@ export class Effects {
       p.sprite.position.y += p.vy * dt;
       p.sprite.scale.multiplyScalar(1 + p.grow * dt);
     }
+    for (let i = this.shells.length - 1; i >= 0; i--) {
+      const s = this.shells[i]!;
+      s.life -= dt;
+      if (s.life <= 0) {
+        this.group.remove(s.mesh);
+        this.shells.splice(i, 1);
+        continue;
+      }
+      s.vel.y -= 9.8 * dt;
+      s.mesh.position.addScaledVector(s.vel, dt);
+      s.mesh.rotation.x += s.spin.x * dt;
+      s.mesh.rotation.y += s.spin.y * dt;
+      // Al tocar el piso (aproximado) rebota un poco y se queda.
+      if (s.mesh.position.y < 0.01 && s.vel.y < 0) {
+        s.mesh.position.y = 0.01;
+        s.vel.y = -s.vel.y * 0.3;
+        s.vel.x *= 0.5;
+        s.vel.z *= 0.5;
+        s.spin.multiplyScalar(0.3);
+      }
+    }
     for (const f of this.flashes) {
       if (f.life <= 0) continue;
       f.life -= dt;
@@ -155,8 +200,10 @@ export class Effects {
     for (const t of this.tracers) this.group.remove(t.line);
     for (const p of this.puffs) this.group.remove(p.sprite);
     for (const h of this.holes) this.group.remove(h);
+    for (const s of this.shells) this.group.remove(s.mesh);
     this.tracers = [];
     this.puffs = [];
     this.holes = [];
+    this.shells = [];
   }
 }

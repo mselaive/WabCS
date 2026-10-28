@@ -118,48 +118,41 @@ body {
   height: 0;
 }
 
+/* La mira se abre con la imprecisión (moverse, saltar, disparar seguido): --gap en px. */
+.crosshair {
+  --gap: 4px;
+}
+
 .crosshair i {
   position: absolute;
   background: #7cff9b;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
+  transition: top 0.06s, left 0.06s;
 }
 
 .crosshair i:nth-child(1) {
   left: -1px;
-  top: -12px;
+  top: calc(-7px - var(--gap));
   width: 2px;
   height: 7px;
 }
 .crosshair i:nth-child(2) {
   left: -1px;
-  top: 5px;
+  top: var(--gap);
   width: 2px;
   height: 7px;
 }
 .crosshair i:nth-child(3) {
-  left: -12px;
+  left: calc(-7px - var(--gap));
   top: -1px;
   width: 7px;
   height: 2px;
 }
 .crosshair i:nth-child(4) {
-  left: 5px;
+  left: var(--gap);
   top: -1px;
   width: 7px;
   height: 2px;
-}
-
-.crosshair.wide i:nth-child(1) {
-  top: -18px;
-}
-.crosshair.wide i:nth-child(2) {
-  top: 11px;
-}
-.crosshair.wide i:nth-child(3) {
-  left: -18px;
-}
-.crosshair.wide i:nth-child(4) {
-  left: 11px;
 }
 
 .hitmarker {

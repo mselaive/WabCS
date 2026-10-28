@@ -240,15 +240,24 @@ export function makeTexture(tex: number): THREE.Texture {
       break;
     }
     case "plaster": {
-      noise(ctx, 12);
-      grime(ctx, style.grime);
-      // Revoque descascarado abajo, y una línea de humedad.
-      ctx.fillStyle = "rgba(0,0,0,0.1)";
-      for (let i = 0; i < 12; i++) {
-        const w = 20 + rnd() * 60;
-        const h = 10 + rnd() * 30;
-        ctx.fillRect(rnd() * SIZE, SIZE - 60 + rnd() * 50, w, h);
+      noise(ctx, 10);
+      // Manchas chicas y suaves (las grandes se veían como borrones de cerca).
+      for (let i = 0; i < 40; i++) {
+        const x = rnd() * SIZE;
+        const y = rnd() * SIZE;
+        const r = 6 + rnd() * 22;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(0,0,0,${0.05 + rnd() * 0.05})`);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
       }
+      // Un zócalo más oscuro abajo.
+      const base = ctx.createLinearGradient(0, SIZE - 70, 0, SIZE);
+      base.addColorStop(0, "rgba(0,0,0,0)");
+      base.addColorStop(1, "rgba(0,0,0,0.18)");
+      ctx.fillStyle = base;
+      ctx.fillRect(0, SIZE - 70, SIZE, 70);
       break;
     }
     case "ribs": {
@@ -350,6 +359,8 @@ export function makeTexture(tex: number): THREE.Texture {
   texture.generateMipmaps = true;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
+  // Los sacos son de medio metro: el tile se repite dos veces por metro.
+  if (tex === TEX_SANDBAG) texture.repeat.set(2, 2);
   return texture;
 }
 
