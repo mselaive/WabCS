@@ -636,7 +636,10 @@ export class Game {
     for (let i = 0; i + 3 < ev.hits.length; i += 4) {
       const to = new THREE.Vector3(ev.hits[i]!, ev.hits[i + 1]!, ev.hits[i + 2]!);
       const kind = ev.hits[i + 3]!;
-      if (!own && weapon(ev.weapon).melee === 0) this.effects.tracer(from, to);
+      if (!own && weapon(ev.weapon).melee === 0) {
+        this.effects.tracer(from, to);
+        this.whizIfClose(from, to);
+      }
       if (kind === HIT_WORLD) {
         this.effects.dust(to);
         // El agujero: el tiro propio ya lo puso la predicción.
@@ -648,6 +651,26 @@ export class Game {
         this.effects.blood(to, kind === HIT_HEAD);
       }
     }
+  }
+
+  /** Si la bala de otro pasó a menos de dos metros de la oreja (sin pegarme), se la oye silbar. */
+  private whizIfClose(from: THREE.Vector3, to: THREE.Vector3): void {
+    const me = this.predictor?.state;
+    if (!me || !me.alive) return;
+    const ex = me.x;
+    const ey = me.y + eyeHeightOf(me);
+    const ez = me.z;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dz = to.z - from.z;
+    const len2 = dx * dx + dy * dy + dz * dz;
+    if (len2 < 1) return;
+    const t = Math.max(0, Math.min(1, ((ex - from.x) * dx + (ey - from.y) * dy + (ez - from.z) * dz) / len2));
+    const px = from.x + dx * t;
+    const py = from.y + dy * t;
+    const pz = from.z + dz * t;
+    const d = Math.hypot(px - ex, py - ey, pz - ez);
+    if (d > 0.35 && d < 2) this.audio.whiz(px, pz);
   }
 
   /** Un agujero de bala donde terminó un tiro: se vuelve a tirar el rayo para saber contra qué cara pegó. */

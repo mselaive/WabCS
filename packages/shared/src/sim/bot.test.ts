@@ -17,10 +17,11 @@ describe("la grilla de caminos", () => {
     expect(walkable(grid, ...cellOf(grid, 0, -12.5))).toBe(true);
     // Adentro de la pared de la casita del mid.
     expect(walkable(grid, ...cellOf(grid, -3, 3.75))).toBe(false);
-    // Adentro del garaje se camina por el piso; el techo queda afuera (demasiado alto).
+    // Adentro del garaje se camina por el piso (el nivel más bajo de la celda); el techo es otro nodo.
     const [gc, gr] = cellOf(grid, -17, 4.5);
     expect(walkable(grid, gc, gr)).toBe(true);
     expect(grid.floor[gr * grid.cols + gc]).toBe(0);
+    expect(grid.start[gr * grid.cols + gc + 1]! - grid.start[gr * grid.cols + gc]!).toBe(2);
     // Arriba de la plataforma de la derecha (0,8 m) sí se puede estar.
     const [pc, pr] = cellOf(grid, 20, 2.5);
     expect(grid.floor[pr * grid.cols + pc]).toBeCloseTo(0.8, 2);
@@ -36,6 +37,25 @@ describe("la grilla de caminos", () => {
     // Al garaje por adentro, y a la plataforma de la derecha.
     expect(findPath(grid, 0, 12.5, -16, 4.5)).not.toBeNull();
     expect(findPath(grid, 0, 12.5, 20, 2.5)).not.toBeNull();
+  });
+
+  it("sube al techo del garaje por la escalera y baja por donde subió", () => {
+    const up = findPath(grid, 0, 12.5, -17, 4.5, 0, 3.25);
+    expect(up).not.toBeNull();
+    const top = up![up!.length - 1]!;
+    expect(top.y).toBeCloseTo(3.25, 2);
+    // Sube por la escalera (pegada al muro oeste, z 7,2..12), no por el aire.
+    for (const p of up!) {
+      if (p.y > 0.1 && p.y < 3.2) {
+        expect(p.x).toBeLessThan(-20.0);
+        expect(p.z).toBeGreaterThan(7);
+        expect(p.z).toBeLessThan(12.6);
+      }
+    }
+    // Y desde arriba vuelve a encontrar camino al spawn CT.
+    const down = findPath(grid, -17, 4.5, 0, -12.5, 3.25, 0);
+    expect(down).not.toBeNull();
+    expect(down![down!.length - 1]!.y).toBeCloseTo(0, 2);
   });
 
   it("no cruza paredes: cada tramo del camino está libre", () => {
@@ -86,6 +106,29 @@ describe("el bot", () => {
     const z0 = bot.z;
     for (let i = 0; i < 8 * 20; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
     expect(bot.z).toBeLessThan(z0 - 4);
+  });
+
+  it("sube de verdad al techo del garaje si ese es su destino", () => {
+    const { state, bot, human, mem, events } = match();
+    human.x = 17;
+    human.z = -4.5;
+    for (let i = 0; i < FREEZE_TICKS; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+    // Lo mandamos arriba del garaje T; sin nadie a la vista, sigue el camino.
+    const goUp = () => {
+      mem.goal = { x: -17, y: 3.25, z: 4.5 };
+      mem.path = [];
+      mem.repathAt = 0;
+    };
+    goUp();
+    let top = -1;
+    for (let i = 0; i < 25 * 20; i++) {
+      if (!mem.goal || mem.goal.y !== 3.25) goUp();
+      step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+      top = Math.max(top, bot.y);
+      if (bot.y > 3.2 && Math.hypot(bot.x + 17, bot.z - 4.5) < 1.5) break;
+    }
+    expect(top).toBeGreaterThan(3.2);
+    expect(Math.hypot(bot.x + 17, bot.z - 4.5)).toBeLessThan(1.5);
   });
 
   it("al ver a alguien le apunta y le dispara, con retardo", () => {

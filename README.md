@@ -35,8 +35,12 @@ dificultad.
 Viven en el servidor, dentro de la sala (`sim/bot.ts`): no se conectan desde ningún lado, así
 que no cuestan mensajes de Cloudflare, y mandan inputs como cualquier jugador, sin hacer nada que
 un jugador no pueda. Encuentran el camino con A* sobre una grilla de medio metro armada a partir
-de las cajas del mapa (`sim/nav.ts`), subiendo escalones y plataformas bajas; los techos de los
-garajes no (son para la gente).
+de las cajas del mapa (`sim/nav.ts`): cada celda tiene un nodo por nivel donde alguien parado no
+choca con nada (el piso del garaje y su techo son dos nodos de la misma celda), se pasa a la celda
+vecina subiendo un escalón como mucho o dejándose caer hasta 3,6 m (cuesta más, así prefieren la
+escalera), y lo que no se alcanza desde los spawns se descarta (la tapa de un barril, el techo de
+la casita del mid). Así suben al techo del garaje por la escalera, patrullan ahí arriba y te van a
+buscar si te vieron ahí.
 
 Compran en el tiempo de compra (rifle del equipo si les alcanza, si no subfusil o escopeta, el
 chaleco si sobra, un AWP de vez en cuando), y después patrullan: los T van hacia la mitad CT, los
@@ -345,4 +349,4 @@ rechaza las que no coinciden con "Hay una versión nueva del juego: recargá la 
 
 ## Lo que falta
 
-Está en [IDEAS.md](IDEAS.md): más mapas, bots que suban a los techos, teléfono.
+Está en [IDEAS.md](IDEAS.md): más mapas, un editor de mapas, teléfono.

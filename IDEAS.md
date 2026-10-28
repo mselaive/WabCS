@@ -33,18 +33,20 @@ Lo que hay, lo que quedó en la lista y por qué. Primera versión: 28 de octubr
 | Bots con granadas | Compran flash, HE y humo; la HE al último visto simulando el tiro, la flash antes de ir, el humo al salir | Test + revisado |
 | Modo bomba | C4, sitios A y B, plantar, desactivar, mecha, kit, explosión, bots que plantan y desactivan | 8 tests + navegador |
 | Segundo mapa | Patio: plaza con fuente, tiendas, calle larga y túnel; selector en la sala; tests comunes a todos los mapas | Tests + capturas |
+| Paredes finas y frenado | Los rifles atraviesan tabiques finos con menos daño (servidor y predicción iguales); un tiro recibido frena 0,4 s | 2 tests + revisado |
+| Manos | Pistolas a dos manos; la izquierda saca el cargador y bombea, la derecha trabaja el cerrojo | Capturas |
+| Bots en los techos | Grilla por niveles: suben por la escalera, patrullan arriba, bajan de un salto si hace falta | Test + `server-bots` |
+| Silbido de balas | Las balas ajenas que pasan a menos de 2 m se oyen pasar | **No lo escuché** (ver sonido) |
 
 ## Lo que falta, en orden
 
-1. **Bots que suban a los techos.** La grilla ignora lo que está a más de un metro: los bots no
-   usan los puestos de francotirador ni te buscan ahí. Haría falta una grilla por nivel.
-2. **Más mapas.** Hay dos (Bodega y Patio). Con la lista de cajas es rápido; lo que lleva tiempo es
+1. **Más mapas.** Hay dos (Bodega y Patio). Con la lista de cajas es rápido; lo que lleva tiempo es
    que sea justo y divertido. Un editor en el navegador (dibujar cajas y exportar el archivo) ahorraría mucho.
-5. **Teléfono.** Un FPS con el pulgar es otro juego. Si se hace, dos sticks y ayuda de puntería
+2. **Teléfono.** Un FPS con el pulgar es otro juego. Si se hace, dos sticks y ayuda de puntería
    como en WabBR, pero no es prioridad.
-6. **Cuentas y ranking.** Nada de esto tiene identidad: el nombre es lo que escribiste. Igual que
+3. **Cuentas y ranking.** Nada de esto tiene identidad: el nombre es lo que escribiste. Igual que
    en WabBR, no parece valer la pena mientras sea entre amigos.
-7. **Mejores muñecos.** Los de cajas cumplen. Un modelo animado (Kenney o Quaternius tienen
+4. **Mejores muñecos.** Los de cajas cumplen. Un modelo animado (Kenney o Quaternius tienen
    packs CC0 en glTF) se vería mejor, pero habría que descargarlo, convertirlo y animarlo.
 
 ## Dudas abiertas

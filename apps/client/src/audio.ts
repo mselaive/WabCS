@@ -281,6 +281,14 @@ export class Audio {
     this.tone(120, 0.15, 0.3, 0, "sine", 60);
   }
 
+  /** Una bala que pasó cerca de la oreja: un silbido corto que cae de tono. */
+  whiz(x: number, z: number): void {
+    if (!this.ctx) return;
+    const { pan } = this.spatial(x, z, 2);
+    this.tone(2600, 0.09, 0.18, pan, "sawtooth", 700);
+    this.noise(0.07, 3000, 0.16, pan, "bandpass", 4);
+  }
+
   impact(x: number, z: number): void {
     if (!this.ctx) return;
     const { gain, pan } = this.spatial(x, z, 5);

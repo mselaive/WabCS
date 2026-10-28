@@ -19,7 +19,7 @@ import type { GameMap } from "../map/types.js";
 import { BUY_ITEMS, SLOT_GRENADE, SLOT_KNIFE, SLOT_PRIMARY, SLOT_SECONDARY, weapon } from "../weapons.js";
 import { grenadeLanding, smokeBlocks } from "./grenade.js";
 import { eyeHeightOf, heightOf } from "./movement.js";
-import { findPath, navGridFor, randomWalkableIn } from "./nav.js";
+import { findPath, navGridFor, randomWalkableIn, type NavPoint } from "./nav.js";
 import type { GameState, PlayerInput, PlayerState, SmokeState } from "./types.js";
 
 /**
@@ -53,8 +53,9 @@ export interface BotMemory {
   rng: () => number;
   yaw: number;
   pitch: number;
-  path: { x: number; z: number }[];
-  goal: { x: number; z: number } | null;
+  path: NavPoint[];
+  /** A dónde va; con `y` si importa el nivel (un techo, el último lugar donde vio a alguien). */
+  goal: { x: number; z: number; y?: number } | null;
   repathAt: number;
   target: number;
   seenAt: number;
@@ -393,7 +394,7 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
       const near = Math.hypot(mem.lastKnown.x - me.x, mem.lastKnown.z - me.z) < 1.5;
       if (near) mem.lastKnown = null;
       else if (!mem.goal || Math.hypot(mem.goal.x - mem.lastKnown.x, mem.goal.z - mem.lastKnown.z) > 1) {
-        mem.goal = { x: mem.lastKnown.x, z: mem.lastKnown.z };
+        mem.goal = { x: mem.lastKnown.x, y: mem.lastKnown.y, z: mem.lastKnown.z };
         mem.path = [];
       }
     }
@@ -402,11 +403,12 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
       mem.path = [];
     }
     if (mem.goal && (mem.path.length === 0 || tick >= mem.repathAt)) {
-      mem.path = findPath(grid, me.x, me.z, mem.goal.x, mem.goal.z) ?? [];
+      mem.path = findPath(grid, me.x, me.z, mem.goal.x, mem.goal.z, me.y, mem.goal.y ?? NaN) ?? [];
       mem.repathAt = tick + 2 * TICK_RATE;
       if (mem.path.length === 0) mem.goal = null;
     }
-    while (mem.path.length > 0 && Math.hypot(mem.path[0]!.x - me.x, mem.path[0]!.z - me.z) < 0.45) mem.path.shift();
+    // Un punto está alcanzado si lo pisa, y en su nivel: el de arriba de un techo no cuenta desde abajo.
+    while (mem.path.length > 0 && Math.hypot(mem.path[0]!.x - me.x, mem.path[0]!.z - me.z) < 0.45 && Math.abs(mem.path[0]!.y - me.y) < 1) mem.path.shift();
     const next = mem.path[0];
     if (next) {
       const toward = Math.atan2(-(next.x - me.x), -(next.z - me.z));
