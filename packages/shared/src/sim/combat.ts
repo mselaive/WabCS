@@ -328,8 +328,10 @@ export function bulletSegments(
     const start = hit.exit + 0.02;
     const t2 = raycastBoxes(ox + dx * start, oy + dy * start, oz + dz * start, dx, dy, dz, boxes, maxRange - start, hit);
     const mul = 0.45 + 0.35 * (1 - thick / wall);
-    if (t2 < 0) segs.push({ from: start, to: maxRange, mul, hitWorld: false, nx: 0, ny: 0, nz: 0 });
-    else segs.push({ from: start, to: start + t2, mul, hitWorld: true, nx: hit.nx, ny: hit.ny, nz: hit.nz });
+    // El tramo cuenta desde la cara de salida: el que está pegado a la pared del otro lado también recibe.
+    if (t2 < 0) segs.push({ from: hit.exit, to: maxRange, mul, hitWorld: false, nx: 0, ny: 0, nz: 0 });
+    else if (t2 < 0.001) segs.push({ from: hit.exit, to: start, mul, hitWorld: true, nx: 0, ny: 0, nz: 0 }); // nace adentro de otra caja: no sigue
+    else segs.push({ from: hit.exit, to: start + t2, mul, hitWorld: true, nx: hit.nx, ny: hit.ny, nz: hit.nz });
   }
   return segs;
 }

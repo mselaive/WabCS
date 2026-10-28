@@ -634,12 +634,16 @@ export class Game {
     const avatar = this.avatars.get(ev.byId);
     const from = avatar && avatar.root.visible ? avatar.muzzle.clone() : new THREE.Vector3(ev.x, ev.y, ev.z);
     if (!own && weapon(ev.weapon).melee === 0) this.effects.flash(from, 10);
+    let prevWall: THREE.Vector3 | null = null;
     for (let i = 0; i + 3 < ev.hits.length; i += 4) {
       const to = new THREE.Vector3(ev.hits[i]!, ev.hits[i + 1]!, ev.hits[i + 2]!);
       const kind = ev.hits[i + 3]!;
+      // Si la bala atravesó una pared, este punto viene después de aquél: el trazador sigue desde la pared.
+      const start = prevWall && weapon(ev.weapon).wall > 0 ? prevWall : from;
+      prevWall = kind === HIT_WORLD ? to : null;
       if (!own && weapon(ev.weapon).melee === 0) {
-        this.effects.tracer(from, to);
-        this.whizIfClose(from, to);
+        this.effects.tracer(start, to);
+        this.whizIfClose(start, to);
       }
       if (kind === HIT_WORLD) {
         this.effects.dust(to);
@@ -996,7 +1000,7 @@ export class Game {
           break;
         } else if (seg.hitWorld) {
           this.effects.dust(to);
-          this.effects.bulletHole(to, new THREE.Vector3(seg.nx, seg.ny, seg.nz));
+          if (seg.nx !== 0 || seg.ny !== 0 || seg.nz !== 0) this.effects.bulletHole(to, new THREE.Vector3(seg.nx, seg.ny, seg.nz));
         }
       }
     }

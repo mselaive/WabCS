@@ -179,6 +179,12 @@ describe("el tiro", () => {
     resolveShot(b.state, b.shooter, AK47, 1, 0, thick, b.events);
     expect(b.events.some((e) => e.t === "hit")).toBe(false);
 
+    // Pegado a la pared del otro lado también recibe (el tramo arranca en la cara de salida).
+    const d = duel(AK47, 10);
+    d.target.z = -(5.1 + 0.3 + 0.001);
+    resolveShot(d.state, d.shooter, AK47, 1, 0, thin, d.events);
+    expect(d.events.some((e) => e.t === "hit")).toBe(true);
+
     // La pistola no atraviesa ni la fina.
     const c = duel(USP, 10);
     resolveShot(c.state, c.shooter, USP, 1, 0, thin, c.events);

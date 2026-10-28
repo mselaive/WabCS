@@ -80,7 +80,8 @@ export function raycastBoxes(
   const scratch: RayHit = { t: 0, exit: 0, nx: 0, ny: 0, nz: 0 };
   for (const b of boxes) {
     if (b.decal) continue;
-    const t = rayBox(ox, oy, oz, dx, dy, dz, b, best < 0 ? maxT : best, scratch);
+    // Siempre hasta maxT (no hasta la mejor hasta ahora): si no, la salida de la caja ganadora quedaría recortada.
+    const t = rayBox(ox, oy, oz, dx, dy, dz, b, maxT, scratch);
     if (t >= 0 && (best < 0 || t < best)) {
       best = t;
       if (out) {

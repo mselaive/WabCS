@@ -398,7 +398,7 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
         mem.path = [];
       }
     }
-    if (!mem.goal || Math.hypot(mem.goal.x - me.x, mem.goal.z - me.z) < 1.2) {
+    if (!mem.goal || (Math.hypot(mem.goal.x - me.x, mem.goal.z - me.z) < 1.2 && (mem.goal.y === undefined || Math.abs(mem.goal.y - me.y) < 1))) {
       mem.goal = bombGoal(state, me, mem, map, tick) ?? pickGoal(me, mem, map, tick);
       mem.path = [];
     }
