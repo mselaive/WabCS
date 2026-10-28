@@ -455,10 +455,21 @@ export class UI {
     el.classList.add("show");
   }
 
-  damageFlash(): void {
+  private damageTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** `angle` en radianes, relativo a donde mirás: 0 de frente, positivo a la izquierda. */
+  damageFlash(angle: number): void {
     const el = $("damageVignette");
     el.style.opacity = "1";
     setTimeout(() => (el.style.opacity = "0"), 120);
+    const dir = $("damageDir");
+    dir.hidden = true;
+    // En pantalla el arco gira en sentido horario: izquierda del jugador = ángulo negativo.
+    dir.style.setProperty("--angle", `${(-angle * 180) / Math.PI}deg`);
+    void dir.offsetWidth;
+    dir.hidden = false;
+    if (this.damageTimer) clearTimeout(this.damageTimer);
+    this.damageTimer = setTimeout(() => (dir.hidden = true), 650);
   }
 
   showBanner(text: string, cls: "" | "t" | "ct" | "gold", ms: number, sub?: string): void {

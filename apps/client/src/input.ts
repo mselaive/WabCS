@@ -45,6 +45,11 @@ export class InputController {
    * sigue apretado, ese click se perdería sin disparar.
    */
   private shotQueued = false;
+  /**
+   * Acaba de apretar el gatillo y todavía no salió ningún input con eso: el
+   * juego manda uno ya mismo en vez de esperar al próximo tick (hasta 50 ms).
+   */
+  private shotTrigger = false;
   private reloadQueued = false;
   private jumpQueued = false;
   private pendingAction = ACT_NONE;
@@ -180,6 +185,7 @@ export class InputController {
       if (e.button === 0) {
         this.shooting = true;
         this.shotQueued = true;
+        this.shotTrigger = true;
       }
       if (e.button === 2) this.scoping = true;
     };
@@ -212,6 +218,13 @@ export class InputController {
   /** Una acción pedida desde afuera (un botón de la interfaz), como si se apretara su tecla. */
   queueAction(action: number): void {
     this.pendingAction = action;
+  }
+
+  /** ¿Se apretó el gatillo desde el último input? Se consume al leerlo. */
+  takeShotTrigger(): boolean {
+    const t = this.shotTrigger;
+    this.shotTrigger = false;
+    return t;
   }
 
   takeIntents(): UiIntent[] {
@@ -267,6 +280,7 @@ export class InputController {
     };
     this.reloadQueued = false;
     this.shotQueued = false;
+    this.shotTrigger = false;
     this.jumpQueued = false;
     this.pendingAction = ACT_NONE;
     return input;

@@ -118,6 +118,40 @@ body {
   height: 0;
 }
 
+/* De dónde vino el tiro que te pegó: un arco rojo alrededor de la mira. */
+.damage-dir {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  --angle: 0deg;
+}
+
+.damage-dir::before {
+  content: "";
+  position: absolute;
+  left: -40px;
+  top: -140px;
+  width: 80px;
+  height: 22px;
+  border-top: 6px solid rgba(255, 60, 60, 0.9);
+  border-radius: 40px 40px 0 0;
+  transform-origin: 40px 140px;
+  transform: rotate(var(--angle));
+  animation: dmgfade 0.6s forwards;
+}
+
+@keyframes dmgfade {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* La mira se abre con la imprecisión (moverse, saltar, disparar seguido): --gap en px. */
 .crosshair {
   --gap: 4px;

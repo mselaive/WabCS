@@ -200,6 +200,13 @@ export class Audio {
     else this.tone(900, 0.05, 0.2, 0, "square");
   }
 
+  /** Mataste a alguien: dos notas cortas. */
+  kill(): void {
+    if (!this.ctx) return;
+    this.tone(880, 0.07, 0.18, 0, "triangle");
+    setTimeout(() => this.ctx && this.tone(1320, 0.12, 0.18, 0, "triangle"), 70);
+  }
+
   /** Te pegaron. */
   hurt(): void {
     if (!this.ctx) return;

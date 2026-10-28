@@ -452,7 +452,16 @@ export class Game {
         return;
       case "hit":
         if (ev.targetId === this.myId) {
-          this.ui.damageFlash();
+          // De dónde vino: del que disparó si se lo ve; si no, del punto de impacto.
+          const by = this.buffer.latest?.players.get(ev.byId);
+          const s = this.predictor?.state;
+          const fx = (by?.x ?? ev.x) - (s?.x ?? ev.x);
+          const fz = (by?.z ?? ev.z) - (s?.z ?? ev.z);
+          const toward = Math.atan2(-fx, -fz);
+          let rel = toward - this.input.yaw;
+          while (rel > Math.PI) rel -= Math.PI * 2;
+          while (rel < -Math.PI) rel += Math.PI * 2;
+          this.ui.damageFlash(rel);
           this.audio.hurt();
         }
         if (ev.byId === this.myId) {
@@ -467,6 +476,7 @@ export class Game {
       case "kill": {
         this.ui.addKill(ev.byId, ev.targetId, ev.weapon, ev.headshot, this.myId);
         this.spawnCorpse(ev.targetId);
+        if (ev.byId === this.myId && ev.targetId !== this.myId) this.audio.kill();
         if (ev.targetId === this.myId) {
           const killer = this.buffer.latest?.players.get(ev.byId);
           const left = killer ? ` · le quedaban <b>${killer.hp}</b> de vida` : "";
@@ -664,6 +674,12 @@ export class Game {
 
     if (me && alive) {
       this.inputAcc += dt * 1000;
+      // El gatillo no espera al próximo tick: el input sale ya, y el siguiente
+      // se atrasa lo mismo, así el ritmo promedio sigue siendo 20 por segundo.
+      if (this.input.takeShotTrigger() && this.inputAcc < MS_PER_TICK && !this.input.uiBusy) {
+        this.sendInput();
+        this.inputAcc -= MS_PER_TICK;
+      }
       let ran = 0;
       while (this.inputAcc >= MS_PER_TICK && ran < 4) {
         this.inputAcc -= MS_PER_TICK;
