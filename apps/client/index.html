@@ -42,6 +42,9 @@
       <div id="subBanner" class="sub-banner" hidden></div>
 
       <div id="freezeInfo" class="freeze-info" hidden></div>
+      <div id="bombInfo" class="bomb-info" hidden></div>
+      <div id="useBar" class="use-bar" hidden><div id="useFill"></div><span id="useText"></span></div>
+      <div id="siteLabel" class="site-label" hidden></div>
       <div id="pickupPrompt" class="pickup" hidden></div>
       <div id="lockHint" class="lock-hint" hidden>Hacé click para jugar</div>
 
@@ -155,6 +158,12 @@
             <ul id="listCT" class="player-list"></ul>
             <button id="btnJoinCT" class="btn btn-small" type="button">Unirme a CT</button>
           </div>
+        </div>
+
+        <div id="modeRow" class="mode-row" role="radiogroup" aria-label="Modo">
+          <span class="mode-label">Modo</span>
+          <button class="mode-btn" type="button" role="radio" data-mode="0" title="Gana la ronda el que elimina al otro equipo">Eliminación</button>
+          <button class="mode-btn" type="button" role="radio" data-mode="1" title="Los T plantan la C4 en A o B; los CT la desactivan">Bomba</button>
         </div>
 
         <div id="roundsRow" class="mode-row" role="radiogroup" aria-label="Rondas para ganar">

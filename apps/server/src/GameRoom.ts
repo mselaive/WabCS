@@ -7,6 +7,7 @@ import {
   BTN_RELOAD,
   BTN_SCOPE,
   BTN_SHOOT,
+  BTN_USE,
   BTN_WALK,
   BUY_ITEMS,
   COUNTDOWN_TICKS,
@@ -15,6 +16,8 @@ import {
   InputQueue,
   MAX_PLAYERS,
   MIN_PLAYERS,
+  MODE_BOMB,
+  MODE_ELIM,
   MS_PER_TICK,
   PROTOCOL_VERSION,
   RECONNECT_GRACE_MS,
@@ -33,6 +36,7 @@ import {
   heightOf,
   mapByIndex,
   navGridFor,
+  packBomb,
   packDrop,
   packGrenade,
   packSmoke,
@@ -131,6 +135,8 @@ export class GameRoom extends Server<Env> {
   private lastStepsTick = 0;
   /** Dificultad de los bots de la sala (índice en BOT_SKILLS). */
   private botSkill = 1;
+  /** El modo de la próxima partida: eliminación o bomba. */
+  private mode = MODE_ELIM;
 
   // ------------------------------------------------------------ conexiones
 
@@ -302,6 +308,7 @@ export class GameRoom extends Server<Env> {
           crouch: (btn & BTN_CROUCH) !== 0,
           walk: (btn & BTN_WALK) !== 0,
           scope: (btn & BTN_SCOPE) !== 0,
+          use: (btn & BTN_USE) !== 0,
           view: typeof msg.vt === "number" && Number.isFinite(msg.vt) && msg.vt >= 0 ? msg.vt / 10 : -1,
           act:
             typeof msg.act === "number" && Number.isInteger(msg.act) && msg.act >= 0 && msg.act < ACT_BUY_BASE + BUY_ITEMS.length
@@ -367,6 +374,14 @@ export class GameRoom extends Server<Env> {
         if (this.state.phase !== "lobby") return;
         if (this.seats.size >= MAX_PLAYERS) return;
         this.addBot();
+        return;
+      }
+
+      case "mode": {
+        if (seat.playerId !== this.hostId || this.state.phase !== "lobby") return;
+        if (msg.mode !== MODE_ELIM && msg.mode !== MODE_BOMB) return;
+        this.mode = msg.mode;
+        this.broadcastRoster();
         return;
       }
 
@@ -518,7 +533,7 @@ export class GameRoom extends Server<Env> {
         if (p) p.team = seat.meta.team;
         if (seat.bot) seat.bot = createBotMemory((Date.now() ^ (seat.playerId * 7919)) | 0, seat.bot.skill);
       }
-      startMatch(s, (Date.now() ^ (this.seats.size << 16)) | 1, this.map, this.winRounds, this.events);
+      startMatch(s, (Date.now() ^ (this.seats.size << 16)) | 1, this.map, this.winRounds, this.events, this.mode);
       this.broadcast(encodeServer({ t: "start", seed: s.seed, map: this.mapIndex }));
     } else if (s.phase === "ended" && s.phaseTicksLeft <= 0) {
       this.resetToLobby();
@@ -620,6 +635,7 @@ export class GameRoom extends Server<Env> {
       // Las granadas y los humos se ven desde todos lados: se oyen y se huelen.
       ...(s.grenades.length > 0 ? { gr: s.grenades.map(packGrenade) } : {}),
       ...(s.smokes.length > 0 ? { sm: s.smokes.map(packSmoke) } : {}),
+      ...(s.mode === MODE_BOMB && s.phase === "playing" ? { bm: packBomb(s) } : {}),
       st: packStandings(s),
       winner: s.winnerTeam,
     };
@@ -833,6 +849,7 @@ export class GameRoom extends Server<Env> {
         winRounds: this.winRounds,
         map: this.mapIndex,
         botSkill: this.botSkill,
+        mode: this.mode,
         ...(this.nextMatchAt > Date.now() ? { nextIn: this.nextMatchAt - Date.now() } : {}),
       }),
     );

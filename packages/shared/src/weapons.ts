@@ -165,6 +165,8 @@ export interface BuyItem {
   armor?: "kevlar" | "helmet";
   /** Una granada: el tipo (0 HE, 1 flash, 2 humo). */
   grenade?: number;
+  /** El kit de desactivación (CT, modo bomba). */
+  kit?: boolean;
 }
 
 export const BUY_ITEMS: readonly BuyItem[] = [
@@ -181,6 +183,7 @@ export const BUY_ITEMS: readonly BuyItem[] = [
   { key: "he", name: "Granada HE", price: 300, weapon: -1, team: -1, grenade: 0 },
   { key: "flash", name: "Flash", price: 200, weapon: -1, team: -1, grenade: 1 },
   { key: "smoke", name: "Humo", price: 300, weapon: -1, team: -1, grenade: 2 },
+  { key: "kit", name: "Kit de desactivación", price: 400, weapon: -1, team: TEAM_CT, kit: true },
 ];
 
 export function buyItemIndex(key: string): number {

@@ -7,7 +7,9 @@ import {
   BTN_RELOAD,
   BTN_SCOPE,
   BTN_SHOOT,
+  BTN_USE,
   BTN_WALK,
+  BOMB_USE_RANGE,
   BUY_RADIUS,
   BUY_TICKS,
   FOV,
@@ -34,8 +36,10 @@ import {
   rayAabb,
   recoilOffset,
   shotRange,
+  siteAt,
   spreadOf,
   raycastBoxes,
+  unpackBomb,
   unpackPlayer,
   unpackRound,
   weapon,
@@ -47,6 +51,7 @@ import {
   type SimEvent,
   type SnapshotMsg,
   type SnapStanding,
+  type UnpackedBomb,
   type UnpackedDrop,
   type UnpackedPlayer,
   type UnpackedRound,
@@ -88,6 +93,10 @@ export class Game {
   private roster: PlayerMeta[] = [];
   private winRounds = 8;
   private botSkill = 1;
+  private mode = 0;
+  /** La bomba según el último snapshot (modo bomba). */
+  private latestBomb: UnpackedBomb | null = null;
+  private nextBeepAt = 0;
   private phase: MatchPhase = "lobby";
   private readonly buffer = new SnapshotBuffer();
   private predictor: Predictor | null = null;
@@ -298,6 +307,10 @@ export class Game {
     this.net?.send({ t: "rounds", win });
   }
 
+  setMode(mode: number): void {
+    this.net?.send({ t: "mode", mode });
+  }
+
   chat(text: string): void {
     this.net?.send({ t: "chat", text });
   }
@@ -319,7 +332,7 @@ export class Game {
         this.winRounds = msg.winRounds;
         this.loadMap(msg.map);
         this.ui.setRoom(msg.room);
-        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill);
+        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill, this.mode);
         if (msg.phase === "lobby") this.ui.showScreen("lobby");
         document.getElementById("reconnecting")!.hidden = true;
         if (this.practiceBots > 0 && this.hostId === this.myId && msg.phase === "lobby") {
@@ -333,7 +346,8 @@ export class Game {
         this.hostId = msg.hostId;
         this.winRounds = msg.winRounds;
         this.botSkill = msg.botSkill;
-        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill, msg.nextIn);
+        this.mode = msg.mode;
+        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill, this.mode, msg.nextIn);
         return;
       case "start":
         this.loadMap(msg.map);
@@ -390,6 +404,7 @@ export class Game {
     this.buffer.push(msg, now);
     this.latestStandings = msg.st;
     this.latestRound = unpackRound(msg.rd);
+    this.latestBomb = msg.bm ? unpackBomb(msg.bm) : null;
 
     if (msg.phase !== this.phase) this.setPhase(msg.phase, msg);
 
@@ -525,6 +540,28 @@ export class Game {
         if (ev.byId !== this.myId && who) this.audio.throwNade(who.x, who.z);
         return;
       }
+      case "bomb": {
+        const at = new THREE.Vector3(ev.x, ev.y, ev.z);
+        if (ev.what === "planted") {
+          this.ui.showBanner(`Bomba plantada en ${ev.site}`, "t", 2500, "40 segundos");
+          this.audio.bombPlanted();
+          this.nextBeepAt = performance.now();
+        } else if (ev.what === "defused") {
+          this.audio.bombDefused();
+        } else if (ev.what === "exploded") {
+          this.effects.explosion(at);
+          this.effects.explosion(at.clone().add(new THREE.Vector3(1, 0.5, 0)));
+          this.effects.flash(at, 300);
+          this.audio.bombExplosion(ev.x, ev.z);
+          this.punchPitch += 0.08;
+          this.landDip = 1;
+        } else if (ev.what === "dropped" && ev.byId === this.myId) {
+          this.ui.showBanner("Se te cayó la bomba", "gold", 1500);
+        } else if (ev.what === "picked" && ev.byId === this.myId) {
+          this.ui.showBanner("Tenés la bomba", "gold", 1500, "E dentro del sitio para plantarla");
+        }
+        return;
+      }
       case "explode": {
         const at = new THREE.Vector3(ev.x, ev.y, ev.z);
         if (ev.kind === 0) {
@@ -554,8 +591,11 @@ export class Game {
       this.ui.closeBuy();
     } else if (winner >= 0) {
       const won = winner === this.myTeam;
-      this.ui.showBanner(`Ganan los ${TEAM_NAMES[winner as 0 | 1]}`, winner === TEAM_T ? "t" : "ct", 4500, reason === "time" ? "Se acabó el tiempo" : "Eliminaron al equipo rival");
+      const why =
+        reason === "time" ? "Se acabó el tiempo" : reason === "bomb" ? "Estalló la bomba" : reason === "defuse" ? "Desactivaron la bomba" : "Eliminaron al equipo rival";
+      this.ui.showBanner(`Ganan los ${TEAM_NAMES[winner as 0 | 1]}`, winner === TEAM_T ? "t" : "ct", 4500, why);
       this.audio.roundEnd(won);
+      this.ui.setBombClock(null);
     }
   }
 
@@ -673,6 +713,8 @@ export class Game {
       e.preventDefault();
     } else if (e.code === "KeyC") {
       this.ui.buyByKey("C");
+    } else if (e.code === "KeyK") {
+      this.ui.buyByKey("K");
     } else if (e.code === "Escape") {
       this.ui.closeBuy();
     }
@@ -709,7 +751,9 @@ export class Game {
         frame.grenades,
         frame.smokes,
         this.myId,
+        this.latestBomb,
       );
+      this.world.updateBomb(this.latestBomb);
     }
 
     const me = this.predictor;
@@ -806,6 +850,7 @@ export class Game {
       this.ui.setPickupPrompt(frame ? nearestDropWeapon(frame.drops, s.x, s.y, s.z) : null);
       this.ui.setSpectating(null);
       if (frame) this.updateBuyHint(frame.round, s.x, s.z, s.team);
+      this.updateBombHud(s.x, s.z, s.team, s.hasBomb, true);
     } else {
       this.viewModel.setHidden(true);
       this.ui.setScope(false);
@@ -815,6 +860,7 @@ export class Game {
       this.ui.setPickupPrompt(null);
       this.applyFov(FOV, dt);
       this.spectate(frame, dt);
+      this.updateBombHud(0, 0, this.myTeam, false, false);
     }
 
     if (!this.ui.scoreboardHidden && this.latestRound) this.ui.updateScoreboard(this.latestStandings, this.myId, this.latestRound.score);
@@ -848,6 +894,7 @@ export class Game {
     if (input.crouch) btn |= BTN_CROUCH;
     if (input.walk) btn |= BTN_WALK;
     if (input.scope) btn |= BTN_SCOPE;
+    if (input.use) btn |= BTN_USE;
     this.net.send({
       t: "in",
       seq: input.seq,
@@ -975,6 +1022,44 @@ export class Game {
       }
     }
     this.ui.setFreezeInfo(null);
+  }
+
+  /** Los carteles de la bomba: la llevás, estás en un sitio, plantando, desactivando, la mecha. */
+  private updateBombHud(x: number, z: number, team: number, hasBomb: boolean, alive: boolean): void {
+    const b = this.latestBomb;
+    if (!b || this.mode !== 1 && !b) {
+      this.ui.setBombInfo(null);
+      this.ui.setUseBar(null);
+      this.ui.setSiteLabel(null);
+      this.ui.setBombClock(null);
+      return;
+    }
+    const site = alive ? siteAt(this.map, x, z) : null;
+    this.ui.setSiteLabel(site ? `SITIO ${site.name}` : null);
+
+    if (b.state === 2) {
+      this.ui.setBombClock(b.ticksLeft);
+      const near = alive && team === 1 && Math.hypot(b.x - x, b.z - z) <= BOMB_USE_RANGE;
+      this.ui.setBombInfo(near ? "Sostené E para desactivar" : `Bomba plantada en ${b.site}`, "planted");
+      // Los bips: cada vez más seguidos.
+      const now = performance.now();
+      if (now >= this.nextBeepAt) {
+        const frac = b.ticksLeft / 800;
+        this.audio.bombBeep(b.x, b.z, frac < 0.15);
+        this.nextBeepAt = now + 120 + 900 * frac;
+      }
+    } else {
+      this.ui.setBombClock(null);
+      if (hasBomb) this.ui.setBombInfo(site ? "Sostené E para plantar" : "Tenés la bomba: plantala en A o B", "carry");
+      else if (b.state === 1 && team === 0) this.ui.setBombInfo("La bomba está en el piso", "carry");
+      else this.ui.setBombInfo(null);
+    }
+
+    if (b.busyId === this.myId && b.progress > 0) {
+      this.ui.setUseBar(b.progress / 100, b.state === 2 ? "Desactivando..." : "Plantando...");
+    } else {
+      this.ui.setUseBar(null);
+    }
   }
 
   /** Muerto: con los ojos de un compañero vivo, o una cámara libre desde donde caíste. */

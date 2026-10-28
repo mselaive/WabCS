@@ -17,7 +17,7 @@ import { createGameState, createPlayer, step } from "./step.js";
 import type { GrenadeState, PlayerInput, SimEvent } from "./types.js";
 
 const input = (over: Partial<PlayerInput> = {}): PlayerInput => ({
-  seq: 1, fwd: 0, side: 0, yaw: 0, pitch: 0, shoot: false, reload: false, jump: false, crouch: false, walk: false, scope: false, act: 0, view: -1,
+  seq: 1, fwd: 0, side: 0, yaw: 0, pitch: 0, shoot: false, reload: false, jump: false, crouch: false, walk: false, scope: false, use: false, act: 0, view: -1,
   ...over,
 });
 

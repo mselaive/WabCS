@@ -12,8 +12,10 @@ import {
   TEX_PLASTER,
   TEX_ROOF,
   TEX_SANDBAG,
+  TEX_SITE,
   TEX_T,
   TEX_WOOD,
+  type BombSite,
   type Box,
   type GameMap,
   type Spawn,
@@ -196,6 +198,14 @@ function build(): GameMap {
   const ctMark = boxes.find((b) => b.tex === TEX_T && b.minZ < 0);
   if (ctMark) ctMark.tex = TEX_CT;
 
+  // Los sitios de la bomba, del lado CT: A adentro del garaje CT, B en la
+  // calle izquierda al lado del contenedor. Se pintan en el piso.
+  const sites: BombSite[] = [
+    { name: "A", minX: 13, minZ: -6.5, maxX: 21.5, maxZ: -2.6 },
+    { name: "B", minX: -15, minZ: -15.5, maxX: -11, maxZ: -12.5 },
+  ];
+  for (const s of sites) boxes.push({ ...box(s.minX, 0, s.minZ, s.maxX, 0.012, s.maxZ, TEX_SITE), decal: true });
+
   const tSpawns: Spawn[] = [];
   const ctSpawns: Spawn[] = [];
   for (let i = 0; i < 5; i++) {
@@ -208,6 +218,7 @@ function build(): GameMap {
     name: "Bodega",
     boxes,
     spawns: [tSpawns, ctSpawns],
+    sites,
     buyCenter: [
       { x: 0, z: 12.5 },
       { x: 0, z: -12.5 },

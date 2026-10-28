@@ -17,6 +17,7 @@ const input = (over: Partial<PlayerInput> = {}): PlayerInput => ({
   crouch: false,
   walk: false,
   scope: false,
+  use: false,
   act: 0,
   view: -1,
   ...over,

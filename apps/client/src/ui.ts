@@ -23,6 +23,7 @@ export interface UICallbacks {
   onBotSkill: (skill: number) => void;
   onTeam: (team: number) => void;
   onRounds: (win: number) => void;
+  onMode: (mode: number) => void;
   onChat: (text: string) => void;
   onLeave: () => void;
   onBuy: (index: number) => void;
@@ -144,6 +145,9 @@ export class UI {
     for (const btn of $("roundsRow").querySelectorAll<HTMLButtonElement>("[data-rounds]")) {
       btn.addEventListener("click", () => cb.onRounds(Number(btn.dataset.rounds)));
     }
+    for (const btn of $("modeRow").querySelectorAll<HTMLButtonElement>("[data-mode]")) {
+      btn.addEventListener("click", () => cb.onMode(Number(btn.dataset.mode)));
+    }
     $("btnAddBot").addEventListener("click", () => cb.onAddBot());
     for (const btn of $("botSkillRow").querySelectorAll<HTMLButtonElement>("[data-skill]")) {
       btn.addEventListener("click", () => cb.onBotSkill(Number(btn.dataset.skill)));
@@ -234,7 +238,7 @@ export class UI {
     this.roomCode.textContent = code;
   }
 
-  updateLobby(roster: PlayerMeta[], hostId: number, myId: number, winRounds: number, botSkill = 1, nextIn?: number): void {
+  updateLobby(roster: PlayerMeta[], hostId: number, myId: number, winRounds: number, botSkill = 1, mode = 0, nextIn?: number): void {
     this.roster = roster;
     this.myId = myId;
     const me = roster.find((p) => p.id === myId);
@@ -295,6 +299,10 @@ export class UI {
 
     for (const btn of $("roundsRow").querySelectorAll<HTMLButtonElement>("[data-rounds]")) {
       btn.setAttribute("aria-checked", String(Number(btn.dataset.rounds) === winRounds));
+      btn.disabled = !isHost;
+    }
+    for (const btn of $("modeRow").querySelectorAll<HTMLButtonElement>("[data-mode]")) {
+      btn.setAttribute("aria-checked", String(Number(btn.dataset.mode) === mode));
       btn.disabled = !isHost;
     }
 
@@ -415,6 +423,55 @@ export class UI {
     $("flashOverlay").style.opacity = String(Math.max(0, Math.min(1, amount)));
   }
 
+  private lastBombInfo = "";
+
+  /** El cartel de la bomba: null para ocultarlo. `cls` "carry" (la llevás) o "planted". */
+  setBombInfo(text: string | null, cls = ""): void {
+    const el = $("bombInfo");
+    const key = text === null ? "" : `${cls}|${text}`;
+    if (key === this.lastBombInfo) return;
+    this.lastBombInfo = key;
+    el.hidden = text === null;
+    if (text !== null) {
+      el.textContent = text;
+      el.className = `bomb-info ${cls}`;
+    }
+  }
+
+  /** La barra de plantar o desactivar: progreso 0 a 1, o null. */
+  setUseBar(progress: number | null, label = ""): void {
+    const el = $("useBar");
+    el.hidden = progress === null;
+    if (progress !== null) {
+      $("useFill").style.width = `${Math.round(progress * 100)}%`;
+      $("useText").textContent = label;
+    }
+  }
+
+  private lastSite = "";
+
+  setSiteLabel(text: string | null): void {
+    const key = text ?? "";
+    if (key === this.lastSite) return;
+    this.lastSite = key;
+    const el = $("siteLabel");
+    el.hidden = text === null;
+    if (text !== null) el.textContent = text;
+  }
+
+  /** La hora de la ronda, o la mecha de la bomba en rojo. */
+  setBombClock(ticksLeft: number | null): void {
+    const timeEl = $("roundTime");
+    if (ticksLeft === null) {
+      timeEl.classList.remove("bomb");
+      return;
+    }
+    const seconds = Math.max(0, Math.ceil(ticksLeft / 20));
+    const text = `💣 ${seconds}`;
+    if (timeEl.textContent !== text) timeEl.textContent = text;
+    timeEl.classList.add("bomb", "urgent");
+  }
+
   private lastGap = -1;
 
   /** `spread` en radianes: la mira se abre proporcionalmente. */
@@ -438,8 +495,11 @@ export class UI {
     const seconds = Math.max(0, Math.ceil(ticksLeft / 20));
     const time = phase === "over" ? "0:00" : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
     const timeEl = $("roundTime");
-    if (timeEl.textContent !== time) timeEl.textContent = time;
-    timeEl.classList.toggle("urgent", phase === "live" && seconds <= 10);
+    // Con la bomba plantada el reloj lo escribe setBombClock.
+    if (!timeEl.classList.contains("bomb")) {
+      if (timeEl.textContent !== time) timeEl.textContent = time;
+      timeEl.classList.toggle("urgent", phase === "live" && seconds <= 10);
+    }
     const rt = `Ronda ${number} · a ${winRounds}`;
     if (this.lastRoundText !== rt) {
       this.lastRoundText = rt;
@@ -523,7 +583,7 @@ export class UI {
     k.textContent = this.nameOf(killerId);
     const w = document.createElement("span");
     w.className = "w";
-    w.textContent = `[${weapon(weaponId).short}${headshot ? " ☠" : ""}]`;
+    w.textContent = `[${weaponId === 12 ? "C4" : weapon(weaponId).short}${headshot ? " ☠" : ""}]`;
     if (headshot) w.classList.add("hs");
     const v = document.createElement("span");
     v.className = this.teamOf(victimId) === TEAM_T ? "t" : "ct";
@@ -564,7 +624,7 @@ export class UI {
       li.className = cant ? "cant" : "";
       const k = document.createElement("span");
       k.className = "key";
-      const key = item.weapon >= 0 ? String(weaponKey++) : item.grenade !== undefined ? String(7 + item.grenade) : item.armor === "kevlar" ? "0" : "C";
+      const key = item.weapon >= 0 ? String(weaponKey++) : item.grenade !== undefined ? String(7 + item.grenade) : item.kit ? "K" : item.armor === "kevlar" ? "0" : "C";
       k.textContent = key;
       const name = document.createElement("span");
       name.textContent = item.name;
@@ -578,6 +638,11 @@ export class UI {
         const desc = document.createElement("small");
         desc.className = "desc";
         desc.textContent = ["Explota a los 1,6 s: hasta 98 de daño, menos con la distancia y nada detrás de una pared", "Ciega al que la mira; hasta 2", "15 s de humo que tapa la vista"][item.grenade] ?? "";
+        name.append(desc);
+      } else if (item.kit) {
+        const desc = document.createElement("small");
+        desc.className = "desc";
+        desc.textContent = "Desactivar la bomba tarda 5 s en vez de 10 (modo bomba)";
         name.append(desc);
       } else {
         const desc = document.createElement("small");
@@ -676,6 +741,7 @@ export class UI {
 function rank(item: BuyItem): number {
   if (item.weapon >= 0) return item.weapon;
   if (item.grenade !== undefined) return 100 + item.grenade;
+  if (item.kit) return 300;
   return item.armor === "kevlar" ? 200 : 201;
 }
 

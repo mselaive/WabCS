@@ -1,4 +1,4 @@
-import { SMOKE_RADIUS, TEAM_T, type GameMap, type SmokeState, type UnpackedGrenade, type UnpackedPlayer } from "@wabcs/shared";
+import { SMOKE_RADIUS, TEAM_T, type GameMap, type SmokeState, type UnpackedBomb, type UnpackedGrenade, type UnpackedPlayer } from "@wabcs/shared";
 
 /** Píxeles por metro del radar. */
 const SCALE = 4;
@@ -62,10 +62,30 @@ export class Minimap {
     grenades: readonly UnpackedGrenade[],
     smokes: readonly SmokeState[],
     myId: number,
+    bomb: UnpackedBomb | null = null,
   ): void {
     if (!this.base || !this.map) return;
     const c = this.ctx;
     c.drawImage(this.base, 0, 0);
+
+    // Los sitios con su letra, y la bomba (plantada, parpadea).
+    if (bomb) {
+      c.font = "bold 11px Rajdhani, sans-serif";
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      for (const s of this.map.sites) {
+        c.fillStyle = "rgba(255,201,74,0.18)";
+        c.fillRect(this.px(s.minX), this.pz(s.minZ), (s.maxX - s.minX) * SCALE, (s.maxZ - s.minZ) * SCALE);
+        c.fillStyle = "#ffc94a";
+        c.fillText(s.name, this.px((s.minX + s.maxX) / 2), this.pz((s.minZ + s.maxZ) / 2));
+      }
+      if (bomb.state > 0 && (bomb.state === 1 || Math.floor(performance.now() / 250) % 2 === 0)) {
+        c.fillStyle = bomb.state === 2 ? "#ff3b3b" : "#ffc94a";
+        c.beginPath();
+        c.arc(this.px(bomb.x), this.pz(bomb.z), 4, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
 
     for (const s of smokes) {
       c.fillStyle = "rgba(220,220,220,0.5)";
@@ -83,6 +103,14 @@ export class Minimap {
       if (p.id === myId || !p.alive || !p.connected) continue;
       const mine = me !== null && p.team === me.team;
       c.fillStyle = mine ? (p.team === TEAM_T ? "#f0b56a" : "#8fc1ff") : "#ff4d4d";
+      // El compañero que lleva la bomba, con un anillo.
+      if (bomb && bomb.carrier === p.id && mine) {
+        c.strokeStyle = "#ffc94a";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(this.px(p.x), this.pz(p.z), 6, 0, Math.PI * 2);
+        c.stroke();
+      }
       c.beginPath();
       c.arc(this.px(p.x), this.pz(p.z), 3.5, 0, Math.PI * 2);
       c.fill();

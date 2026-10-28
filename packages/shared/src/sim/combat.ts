@@ -373,11 +373,22 @@ export function damagePlayer(
   target.killerId = by.id;
   target.deaths++;
   target.scoped = false;
-  by.kills++;
-  by.money = Math.min(MAX_MONEY, by.money + (wid === KNIFE ? KNIFE_KILL_REWARD : KILL_REWARD));
+  // Matarse solo (la propia HE, la bomba) no suma ni paga.
+  if (by.id !== target.id) {
+    by.kills++;
+    by.money = Math.min(MAX_MONEY, by.money + (wid === KNIFE ? KNIFE_KILL_REWARD : KILL_REWARD));
+  }
   // Las armas quedan en el piso: el rival (o el compañero) las puede levantar.
   for (let s = 0; s < 2; s++) {
     if ((target.slots[s] ?? -1) >= 0) dropWeaponAt(state, target, s, map, s === 0 ? 0.4 : -0.4);
+  }
+  // Y la bomba, si la llevaba.
+  if (target.hasBomb) {
+    target.hasBomb = false;
+    state.bomb.carrier = -1;
+    state.bomb.dropped = { x: target.x, y: target.y, z: target.z };
+    if (state.bomb.planting?.id === target.id) state.bomb.planting = null;
+    events.push({ t: "bomb", what: "dropped", byId: target.id, x: target.x, y: target.y, z: target.z, site: "" });
   }
   events.push({ t: "kill", targetId: target.id, byId: by.id, weapon: wid, headshot: zone === ZONE_HEAD });
 }

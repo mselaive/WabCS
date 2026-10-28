@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BODEGA } from "../map/bodega.js";
-import { ACT_BUY_BASE, FREEZE_TICKS, TEAM_CT, TEAM_T } from "../constants.js";
+import { ACT_BUY_BASE, FREEZE_TICKS, MODE_BOMB, TEAM_CT, TEAM_T } from "../constants.js";
 import { wrapAngle } from "../math.js";
 import { AK47, BUY_ITEMS, USP } from "../weapons.js";
 import { botInput, createBotMemory } from "./bot.js";
@@ -149,6 +149,41 @@ describe("el bot", () => {
     expect(threw).toBe(true);
     expect(bot.grenades[0] + bot.grenades[1] + bot.grenades[2]).toBe(before - 1);
     expect(state.grenades.length + state.smokes.length).toBeGreaterThan(0);
+  });
+
+  it("en modo bomba el portador va al sitio y planta, y un CT la desactiva", () => {
+    const state = createGameState();
+    const bot = createPlayer(1, TEAM_T);
+    const ct = createPlayer(2, TEAM_CT);
+    state.players.push(bot, ct);
+    const events: SimEvent[] = [];
+    startMatch(state, 11, BODEGA, 8, events, MODE_BOMB);
+    const mem = createBotMemory(5, 2);
+    const ctMem = createBotMemory(6, 2);
+    // El CT, en el rincón de adentro del garaje CT (sitio A), y el bot va al B.
+    ct.x = 20.5;
+    ct.z = -6.3;
+    expect(bot.hasBomb).toBe(true);
+    for (let i = 0; i < FREEZE_TICKS; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+    mem.site = 1;
+    mem.goal = null;
+    let planted = false;
+    for (let i = 0; i < 60 * 20 && !planted; i++) {
+      step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+      ct.x = 20.5;
+      ct.z = -6.3;
+      planted = state.bomb.planted !== null;
+    }
+    expect(planted).toBe(true);
+    // Ahora el CT bot va a buscarla y la desactiva (sin kit tarda 10 s).
+    bot.alive = false;
+    let defused = false;
+    for (let i = 0; i < 60 * 20 && !defused; i++) {
+      step(state, new Map([[2, [botInput(state, ct, ctMem, BODEGA)]]]), events, BODEGA);
+      defused = events.some((e) => e.t === "bomb" && e.what === "defused");
+    }
+    expect(defused).toBe(true);
+    expect(state.round.winner).toBe(TEAM_CT);
   });
 
   it("no dispara a través de la pared de la casita", () => {

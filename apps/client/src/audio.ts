@@ -242,6 +242,31 @@ export class Audio {
     this.noise(0.6, 900, 0.35 * gain, pan, "bandpass", 0.7);
   }
 
+  /** El bip de la bomba plantada (se oye en todo el mapa, más fuerte cerca). */
+  bombBeep(x: number, z: number, urgent: boolean): void {
+    if (!this.ctx) return;
+    const { gain, pan } = this.spatial(x, z, 18);
+    this.tone(urgent ? 1800 : 1400, 0.06, 0.25 * Math.max(0.35, gain), pan, "square");
+  }
+
+  bombPlanted(): void {
+    if (!this.ctx) return;
+    this.tone(500, 0.25, 0.3, 0, "square", 350);
+  }
+
+  bombDefused(): void {
+    if (!this.ctx) return;
+    [660, 880, 1100].forEach((f, i) => setTimeout(() => this.ctx && this.tone(f, 0.18, 0.25, 0, "triangle"), i * 90));
+  }
+
+  /** La C4: enorme, con cola. */
+  bombExplosion(x: number, z: number): void {
+    if (!this.ctx) return;
+    const { gain, pan } = this.spatial(x, z, 30);
+    this.noise(1.6, 300, 1.4 * Math.max(0.5, gain), pan);
+    this.tone(45, 1.4, 1.0 * Math.max(0.5, gain), pan, "sine", 20);
+  }
+
   /** Mataste a alguien: dos notas cortas. */
   kill(): void {
     if (!this.ctx) return;

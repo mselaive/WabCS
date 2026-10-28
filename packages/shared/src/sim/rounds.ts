@@ -6,6 +6,8 @@ import {
   LOSS_STEP,
   MAX_HP,
   MAX_MONEY,
+  MODE_BOMB,
+  MODE_ELIM,
   ROUND_OVER_TICKS,
   ROUND_TICKS,
   START_MONEY,
@@ -13,8 +15,10 @@ import {
   TEAM_T,
   WIN_REWARD,
 } from "../constants.js";
+import { mulberry32 } from "../math.js";
 import type { GameMap } from "../map/types.js";
 import { defaultPistol, KNIFE, SLOT_KNIFE, SLOT_SECONDARY, weapon } from "../weapons.js";
+import { giveBomb } from "./bomb.js";
 import { resetTrail } from "./combat.js";
 import type { GameState, PlayerState, SimEvent } from "./types.js";
 
@@ -28,13 +32,17 @@ export function giveStartingKit(p: PlayerState): void {
   p.armor = 0;
   p.helmet = false;
   p.grenades = [0, 0, 0];
+  p.kit = false;
+  p.hasBomb = false;
 }
 
 /** Arranca el partido: dinero inicial para todos y la primera ronda. */
-export function startMatch(state: GameState, seed: number, map: GameMap, winRounds: number, events: SimEvent[]): void {
+export function startMatch(state: GameState, seed: number, map: GameMap, winRounds: number, events: SimEvent[], mode = MODE_ELIM): void {
   state.phase = "playing";
   state.phaseTicksLeft = 0;
   state.seed = seed;
+  state.mode = mode;
+  state.rng = mulberry32(seed);
   state.winnerTeam = -1;
   state.tick = 0;
   state.drops = [];
@@ -112,6 +120,8 @@ export function startRound(state: GameState, map: GameMap, events: SimEvent[]): 
       resetTrail(p);
     });
   }
+  // Un T al azar se lleva la bomba (los CT pierden el kit si murieron: ya lo hizo giveStartingKit).
+  giveBomb(state, state.rng ?? Math.random);
   events.push({ t: "round", phase: "freeze", number: r.number, winner: -1, reason: "", score: [r.score[0], r.score[1]] });
 }
 
@@ -141,18 +151,24 @@ export function stepRound(state: GameState, map: GameMap, events: SimEvent[]): v
   }
 
   if (r.phase === "live") {
-    r.ticksLeft--;
+    const planted = state.bomb.planted !== null;
+    // Con la bomba plantada el reloj de la ronda se congela: manda la mecha.
+    if (!planted) r.ticksLeft--;
     const tAlive = aliveCount(state, TEAM_T);
     const ctAlive = aliveCount(state, TEAM_CT);
     let winner = -1;
-    let reason: "elim" | "time" = "elim";
-    if (ctAlive === 0 && tAlive > 0) winner = TEAM_T;
-    else if (tAlive === 0 && ctAlive > 0) winner = TEAM_CT;
-    else if (tAlive === 0 && ctAlive === 0) {
+    let reason: "elim" | "time" | "bomb" | "defuse" = "elim";
+    if (state.mode === MODE_BOMB && state.bomb.done) {
+      // Estalló (ganan los T) o la desactivaron (ganan los CT).
+      winner = r.reason === "bomb" ? TEAM_T : TEAM_CT;
+      reason = r.reason === "bomb" ? "bomb" : "defuse";
+    } else if (ctAlive === 0 && tAlive > 0) winner = TEAM_T;
+    else if (tAlive === 0 && ctAlive > 0 && !planted) winner = TEAM_CT;
+    else if (tAlive === 0 && ctAlive === 0 && !planted) {
       // Los dos equipos se fueron o murieron a la vez: la ronda es de los CT, como por tiempo.
       winner = TEAM_CT;
       reason = "time";
-    } else if (r.ticksLeft <= 0) {
+    } else if (r.ticksLeft <= 0 && !planted) {
       winner = TEAM_CT;
       reason = "time";
     }
@@ -164,7 +180,7 @@ export function stepRound(state: GameState, map: GameMap, events: SimEvent[]): v
   if (--r.ticksLeft <= 0) nextRound(state, map, events);
 }
 
-function endRound(state: GameState, winner: number, reason: "elim" | "time", events: SimEvent[]): void {
+function endRound(state: GameState, winner: number, reason: "elim" | "time" | "bomb" | "defuse", events: SimEvent[]): void {
   const r = state.round;
   const loser = winner === TEAM_T ? TEAM_CT : TEAM_T;
   r.phase = "over";
@@ -175,10 +191,18 @@ function endRound(state: GameState, winner: number, reason: "elim" | "time", eve
   r.lossStreak[winner as 0 | 1] = 0;
   const lossPay = LOSS_BASE + LOSS_STEP * Math.min(LOSS_MAX_STREAK, r.lossStreak[loser as 0 | 1]);
   r.lossStreak[loser as 0 | 1] = Math.min(LOSS_MAX_STREAK, r.lossStreak[loser as 0 | 1] + 1);
+  // Plantar paga aunque se pierda, como en CS; ganar por bomba paga un poco más.
+  const plantBonus = state.mode === MODE_BOMB && (state.bomb.planted !== null || state.bomb.done) && reason !== "elim" ? 800 : 0;
   for (const p of state.players) {
     if (!p.connected) continue;
-    p.money = Math.min(MAX_MONEY, p.money + (p.team === winner ? WIN_REWARD : lossPay));
+    let pay = p.team === winner ? WIN_REWARD : lossPay;
+    if (p.team === TEAM_T && plantBonus > 0 && p.team !== winner) pay += plantBonus;
+    if (reason === "bomb" && p.team === winner) pay += 250;
+    p.money = Math.min(MAX_MONEY, p.money + pay);
   }
+  // La bomba plantada que quedó (los CT ganaron por eliminación no se da: con bomba sigue la ronda).
+  state.bomb.planting = null;
+  state.bomb.defusing = null;
   events.push({ t: "round", phase: "over", number: r.number, winner, reason, score: [r.score[0], r.score[1]] });
 }
 

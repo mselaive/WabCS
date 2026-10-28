@@ -125,6 +125,25 @@ export const FLASH_BACK_TICKS = 0.5 * TICK_RATE;
 /** Cuántas se pueden llevar de cada una: [HE, flash, humo]. */
 export const GRENADE_MAX = [1, 2, 1] as const;
 
+// ------------------------------------------------------------ la bomba
+
+/** Modos de juego: eliminación (gana el que elimina al otro) o bomba. */
+export const MODE_ELIM = 0;
+export const MODE_BOMB = 1;
+/** Plantar: sostener E dentro del sitio. Desactivar: sostener E al lado de la bomba. */
+export const BOMB_PLANT_TICKS = Math.round(3.5 * TICK_RATE);
+export const BOMB_DEFUSE_TICKS = 10 * TICK_RATE;
+export const BOMB_DEFUSE_KIT_TICKS = 5 * TICK_RATE;
+/** Desde que se planta hasta que estalla. */
+export const BOMB_TIMER_TICKS = 40 * TICK_RATE;
+/** A menos de esto de la bomba se la puede desactivar (y se la levanta si está tirada). */
+export const BOMB_USE_RANGE = 1.3;
+export const BOMB_PICKUP_RANGE = 1.0;
+/** La explosión: daño en el centro y hasta dónde llega (atraviesa paredes, como en CS). */
+export const BOMB_DAMAGE = 320;
+export const BOMB_RADIUS = 16;
+export const DEFUSE_KIT_PRICE = 400;
+
 /** Hasta dónde se recoge un arma del piso. */
 export const PICKUP_RANGE = 1.8;
 /** Cuánto vive un arma tirada (ticks). Al terminar la ronda se limpian todas. */
@@ -139,6 +158,8 @@ export const BTN_JUMP = 4;
 export const BTN_CROUCH = 8;
 export const BTN_WALK = 16;
 export const BTN_SCOPE = 32;
+/** E sostenida: plantar o desactivar la bomba. */
+export const BTN_USE = 64;
 
 /** Acciones puntuales (`act`): una por input, en el tick en que se aprieta. */
 export const ACT_NONE = 0;

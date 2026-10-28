@@ -435,6 +435,72 @@ body {
   border-radius: 4px;
 }
 
+.bomb-info {
+  position: absolute;
+  top: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  color: var(--danger);
+  background: rgba(10, 12, 16, 0.75);
+  padding: 6px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.bomb-info.carry {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.bomb-info.planted {
+  animation: pulse 1s steps(2) infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.use-bar {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 18px;
+  background: rgba(10, 12, 16, 0.8);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.use-bar div {
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+}
+
+.use-bar span {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.site-label {
+  position: absolute;
+  left: 50%;
+  top: 150px;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: var(--muted);
+  letter-spacing: 2px;
+}
+
 .pickup {
   position: absolute;
   bottom: 30%;

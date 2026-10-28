@@ -1,4 +1,4 @@
-import { BUY_RADIUS, BUY_TICKS, DROP_TICKS, GRENADE_MAX, PICKUP_RANGE, ROUND_TICKS } from "../constants.js";
+import { BUY_RADIUS, BUY_TICKS, DROP_TICKS, GRENADE_MAX, PICKUP_RANGE, ROUND_TICKS, TEAM_CT } from "../constants.js";
 import { distXZ } from "../math.js";
 import type { GameMap } from "../map/types.js";
 import { BUY_ITEMS, KNIFE, SLOT_GRENADE, SLOT_KNIFE, weapon } from "../weapons.js";
@@ -45,6 +45,14 @@ export function tryBuy(state: GameState, p: PlayerState, index: number, map: Gam
     p.money -= price;
     p.armor = 100;
     if (item.armor === "helmet") p.helmet = true;
+    events.push({ t: "buy", byId: p.id, item: index });
+    return true;
+  }
+
+  if (item.kit) {
+    if (p.team !== TEAM_CT || p.kit || p.money < item.price) return false;
+    p.money -= item.price;
+    p.kit = true;
     events.push({ t: "buy", byId: p.id, item: index });
     return true;
   }

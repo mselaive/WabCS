@@ -279,6 +279,8 @@ export class InputController {
       crouch: !busy && this.any(CROUCH),
       walk: this.any(WALK),
       scope: !busy && this.scoping,
+      // E sostenida: plantar o desactivar la bomba.
+      use: !busy && this.keys.has("KeyE"),
       act: this.pendingAction,
       view,
     };

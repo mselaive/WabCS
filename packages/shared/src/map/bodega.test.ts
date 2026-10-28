@@ -87,7 +87,8 @@ function reachable(fromX: number, fromZ: number): Set<string> {
 describe("Bodega", () => {
   it("es simétrica por un giro de 180°", () => {
     const sig = (b: Box) => `${b.minY},${b.maxY},${b.tex === 4 || b.tex === 5 ? "mark" : b.tex},${b.shape ?? "box"}`;
-    for (const b of solid.concat(BODEGA.boxes.filter((b) => b.decal))) {
+    // Los sitios de la bomba son sólo del lado CT: no tienen gemela.
+    for (const b of solid.concat(BODEGA.boxes.filter((b) => b.decal && b.tex !== 16))) {
       const twin = BODEGA.boxes.find(
         (o) =>
           Math.abs(o.minX + b.maxX) < 1e-6 &&
@@ -121,6 +122,16 @@ describe("Bodega", () => {
     // Adentro de la casita del mid y adentro del garaje.
     expect(at(0, 0, 0), "mid").toBe(true);
     expect(at(-16, 4.5, 0), "adentro del garaje").toBe(true);
+  });
+
+  it("los sitios de la bomba están del lado CT y se llega caminando", () => {
+    const from = reachable(0, 12.5);
+    for (const s of BODEGA.sites) {
+      expect(s.maxZ).toBeLessThan(0);
+      const cx = Math.round(((s.minX + s.maxX) / 2) * 2) / 2;
+      const cz = Math.round(((s.minZ + s.maxZ) / 2) * 2) / 2;
+      expect([...from].some((k) => k.startsWith(`${cx.toFixed(1)},${cz.toFixed(1)},`)), `sitio ${s.name}`).toBe(true);
+    }
   });
 
   it("nada flota ni se hunde raro: las cajas apoyan en algo", () => {

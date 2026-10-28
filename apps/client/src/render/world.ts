@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { SMOKE_RADIUS, SMOKE_TICKS, TEX_COUNT, type Box, type GameMap, type SmokeState, type UnpackedDrop, type UnpackedGrenade } from "@wabcs/shared";
+import { SMOKE_RADIUS, SMOKE_TICKS, TEX_COUNT, type Box, type GameMap, type SmokeState, type UnpackedBomb, type UnpackedDrop, type UnpackedGrenade } from "@wabcs/shared";
 import { makeAllMaterials, makePuffTexture } from "./textures.js";
 import { buildGrenadeMesh, buildWeaponMesh } from "./viewmodel.js";
 
@@ -210,6 +210,33 @@ export class World {
     this.grenadeMeshes.clear();
     this.smokeGroup.clear();
     this.smokeClouds.clear();
+  }
+
+  private bombMesh: THREE.Group | null = null;
+  private bombLight: THREE.Mesh | null = null;
+
+  /** La bomba en el piso o plantada: una caja con una luz roja que parpadea. */
+  updateBomb(bomb: UnpackedBomb | null): void {
+    const show = bomb !== null && bomb.state > 0;
+    if (!show) {
+      if (this.bombMesh) this.bombMesh.visible = false;
+      return;
+    }
+    if (!this.bombMesh) {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.2), new THREE.MeshStandardMaterial({ color: 0x3a3f46, roughness: 0.7, metalness: 0.3 }));
+      body.position.y = 0.05;
+      const sticks = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.06, 0.16), new THREE.MeshStandardMaterial({ color: 0xb8a37a, roughness: 0.9 }));
+      sticks.position.y = 0.13;
+      this.bombLight = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2020 }));
+      this.bombLight.position.set(0.1, 0.17, 0.05);
+      g.add(body, sticks, this.bombLight);
+      this.bombMesh = g;
+      this.scene.add(g);
+    }
+    this.bombMesh.visible = true;
+    this.bombMesh.position.set(bomb!.x, bomb!.y, bomb!.z);
+    if (this.bombLight) this.bombLight.visible = bomb!.state === 1 || Math.floor(performance.now() / 250) % 2 === 0;
   }
 
   /** Las granadas en el aire: una malla por cada una, girando. */

@@ -1,6 +1,7 @@
-import { ACT_BUY_BASE, ACT_DROP, ACT_NONE, ACT_PICKUP, MAX_HP, START_MONEY, TEAM_T, TRAIL_LENGTH } from "../constants.js";
+import { ACT_BUY_BASE, ACT_DROP, ACT_NONE, ACT_PICKUP, MAX_HP, MODE_ELIM, START_MONEY, TEAM_T, TRAIL_LENGTH } from "../constants.js";
 import type { GameMap } from "../map/types.js";
 import { KNIFE, SLOT_GRENADE, SLOT_SECONDARY, grenadeKind } from "../weapons.js";
+import { busyWithBomb, createBombState, stepBomb, stepBombInput } from "./bomb.js";
 import { applySlotAction, firstUsableSlot, recordTrail, resolveShot, shotRewind, stepWeaponState, switchTo } from "./combat.js";
 import { stepGrenades, throwGrenade } from "./grenade.js";
 import { dropActive, tryBuy, tryPickup } from "./inventory.js";
@@ -33,6 +34,8 @@ export function createPlayer(id: number, team = TEAM_T): PlayerState {
     active: SLOT_SECONDARY,
     grenades: [0, 0, 0],
     blindTicks: 0,
+    hasBomb: false,
+    kit: false,
     fireCd: 0,
     reloadCd: 0,
     drawCd: 0,
@@ -74,6 +77,8 @@ export function createGameState(): GameState {
       reason: "",
       swapped: false,
     },
+    mode: MODE_ELIM,
+    bomb: createBombState(),
     winnerTeam: -1,
     seed: 1,
     mapIndex: 0,
@@ -115,8 +120,10 @@ export function afterThrow(p: PlayerState, kind: number): void {
  */
 function stepPlayerInput(state: GameState, p: PlayerState, input: PlayerInput, map: GameMap, events: SimEvent[], acting: boolean): void {
   p.lastSeq = input.seq;
-  stepPlayerMovement(p, input, map, acting);
+  // Plantando o desactivando no se camina (soltar E lo cancela).
+  stepPlayerMovement(p, input, map, acting && !busyWithBomb(state, p.id));
   if (!p.alive) return;
+  if (acting) stepBombInput(state, p, input, map, events);
 
   if (input.act !== ACT_NONE) {
     if (input.act >= ACT_BUY_BASE) tryBuy(state, p, input.act - ACT_BUY_BASE, map, events);
@@ -164,6 +171,7 @@ export function step(state: GameState, inputs: ReadonlyMap<number, PlayerInput[]
   }
 
   stepGrenades(state, map, events);
+  stepBomb(state, map, events);
 
   for (const p of state.players) if (p.alive) recordTrail(p, state.tick);
 

@@ -33,11 +33,22 @@ export interface Spawn {
   yaw: number;
 }
 
+/** Un sitio donde plantar la bomba: un rectángulo del piso. */
+export interface BombSite {
+  name: string;
+  minX: number;
+  minZ: number;
+  maxX: number;
+  maxZ: number;
+}
+
 export interface GameMap {
   name: string;
   boxes: Box[];
   /** Puntos de aparición por equipo: [T, CT]. */
   spawns: [Spawn[], Spawn[]];
+  /** Los sitios de la bomba (A y B), del lado de los CT. */
+  sites: BombSite[];
   /** Centro de cada zona de compra: [T, CT]. */
   buyCenter: [{ x: number; z: number }, { x: number; z: number }];
   /** Hasta dónde llega el mundo (para la cámara libre y para no caerse al infinito). */
@@ -63,4 +74,6 @@ export const TEX_CONTAINER_BLUE = 12;
 export const TEX_CONTAINER_RED = 13;
 export const TEX_SANDBAG = 14;
 export const TEX_BARREL = 15;
-export const TEX_COUNT = 16;
+/** Rayas amarillas y negras: el piso de los sitios de la bomba. */
+export const TEX_SITE = 16;
+export const TEX_COUNT = 17;

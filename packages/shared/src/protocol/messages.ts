@@ -72,7 +72,13 @@ export interface BotSkillMsg {
   skill: number;
 }
 
-export type ClientMsg = ReadyMsg | InputMsg | PingMsg | StartMsg | KickMsg | AddBotMsg | TeamMsg | RoundsMsg | ChatMsg | BotSkillMsg;
+/** El host elige el modo: MODE_ELIM o MODE_BOMB. */
+export interface ModeMsg {
+  t: "mode";
+  mode: number;
+}
+
+export type ClientMsg = ReadyMsg | InputMsg | PingMsg | StartMsg | KickMsg | AddBotMsg | TeamMsg | RoundsMsg | ChatMsg | BotSkillMsg | ModeMsg;
 
 // ------------------------------------------------------------ servidor -> cliente
 
@@ -95,6 +101,8 @@ export interface RosterMsg {
   map: number;
   /** Dificultad de los bots de la sala. */
   botSkill: number;
+  /** El modo de la próxima partida. */
+  mode: number;
   /** Milisegundos hasta que la próxima partida arranque sola. */
   nextIn?: number;
 }
@@ -115,7 +123,7 @@ export interface MatchStartMsg {
  * --- sólo el propio:
  * 16 ammo0, 17 reserve0, 18 ammo1, 19 reserve1, 20 money, 21 fireCd,
  * 22 reloadCd, 23 drawCd, 24 recoil, 25 vy (cm/s), 26 granadas
- * (he + flash*4 + humo*16), 27 blindTicks
+ * (he + flash*4 + humo*16), 27 blindTicks, 28 bomba (1 la lleva) + kit (2)
  */
 export type SnapPlayer = number[];
 
@@ -159,9 +167,17 @@ export type SnapStanding = [number, number, number, number, number, number, numb
 
 /**
  * La ronda: [número, fase (0 freeze, 1 live, 2 over), ticks que quedan,
- * puntos T, puntos CT, rondas para ganar, ganador de la ronda, lados cambiados].
+ * puntos T, puntos CT, rondas para ganar, ganador de la ronda, lados cambiados,
+ * modo, motivo (0 nada, 1 eliminación, 2 tiempo, 3 bomba, 4 desactivada)].
  */
-export type SnapRound = [number, number, number, number, number, number, number, number];
+export type SnapRound = [number, number, number, number, number, number, number, number, number, number];
+
+/**
+ * La bomba: [portador (-1 si nadie), estado (0 nada, 1 en el piso, 2 plantada),
+ * x, y, z (cm), ticks de mecha, quién planta/desactiva (-1), progreso de eso
+ * (0-100), sitio ("" o la letra)].
+ */
+export type SnapBomb = [number, number, number, number, number, number, number, number, string];
 
 export interface SnapshotMsg {
   t: "s";
@@ -177,6 +193,8 @@ export interface SnapshotMsg {
   /** Granadas en el aire y humos: sólo cuando hay. */
   gr?: SnapGrenade[];
   sm?: SnapSmoke[];
+  /** La bomba (modo bomba). */
+  bm?: SnapBomb;
   st: SnapStanding[];
   /** Equipo ganador del partido, o -1. */
   winner: number;

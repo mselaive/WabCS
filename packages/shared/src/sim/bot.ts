@@ -4,12 +4,15 @@ import {
   ACT_NONE,
   ACT_SLOT_0,
   ACT_SLOT_1,
+  BOMB_USE_RANGE,
   HEAD_HEIGHT,
+  MODE_BOMB,
   ROUND_TICKS,
   TEAM_CT,
   TEAM_T,
   TICK_RATE,
 } from "../constants.js";
+import { siteAt } from "./bomb.js";
 import { mulberry32, wrapAngle } from "../math.js";
 import { segmentClear } from "../map/raycast.js";
 import type { GameMap } from "../map/types.js";
@@ -72,6 +75,9 @@ export interface BotMemory {
   seq: number;
   nade: NadePlan | null;
   nadeCheckAt: number;
+  /** Modo bomba: a qué sitio va esta ronda, y cómo estaba la bomba la última vez que miró. */
+  site: number;
+  bombKey: string;
 }
 
 export function createBotMemory(seed: number, skill: number): BotMemory {
@@ -102,7 +108,32 @@ export function createBotMemory(seed: number, skill: number): BotMemory {
     seq: 1,
     nade: null,
     nadeCheckAt: 0,
+    site: 0,
+    bombKey: "",
   };
+}
+
+/**
+ * Modo bomba: a dónde ir por la bomba. Los T van todos al mismo sitio (el
+ * de la ronda), el portador a plantar; si la bomba cayó, a buscarla; si está
+ * plantada, a defenderla. Los CT guardan un sitio, y si la plantaron van a
+ * desactivarla. Devuelve null si no hay nada que hacer por la bomba.
+ */
+function bombGoal(state: GameState, me: PlayerState, mem: BotMemory, map: GameMap, tick: number): { x: number; z: number } | null {
+  if (state.mode !== MODE_BOMB || map.sites.length === 0) return null;
+  const b = state.bomb;
+  const grid = navGridFor(map);
+  const site = map.sites[mem.site % map.sites.length]!;
+  const near = (x: number, z: number, r: number) => randomWalkableIn(grid, x - r, z - r, x + r, z + r, mem.rng);
+  if (me.team === TEAM_T) {
+    if (b.dropped && b.carrier < 0) return { x: b.dropped.x, z: b.dropped.z };
+    if (b.planted) return near(b.planted.x, b.planted.z, 6);
+    if (me.hasBomb) return near((site.minX + site.maxX) / 2, (site.minZ + site.maxZ) / 2, 1.5);
+    return near((site.minX + site.maxX) / 2, (site.minZ + site.maxZ) / 2, 5);
+  }
+  if (b.planted) return { x: b.planted.x, z: b.planted.z };
+  if (tick < mem.holdUntil) return near((site.minX + site.maxX) / 2, (site.minZ + site.maxZ) / 2, 6);
+  return null;
 }
 
 /** Le pasaron cerca o le pegaron: ahora sabe por dónde anda el otro. */
@@ -112,7 +143,7 @@ export function botAlert(mem: BotMemory, x: number, y: number, z: number, tick: 
 }
 
 function blank(seq: number, yaw: number, pitch: number): PlayerInput {
-  return { seq, fwd: 0, side: 0, yaw, pitch, shoot: false, reload: false, jump: false, crouch: false, walk: false, scope: false, act: ACT_NONE, view: -1 };
+  return { seq, fwd: 0, side: 0, yaw, pitch, shoot: false, reload: false, jump: false, crouch: false, walk: false, scope: false, use: false, act: ACT_NONE, view: -1 };
 }
 
 /** ¿El bot ve a `q`? De sus ojos al pecho o la cabeza, dentro de su campo de visión y alcance. */
@@ -149,6 +180,8 @@ function shopping(me: PlayerState, rng: () => number): number {
     if (me.money >= 650) return idx("kevlar");
   }
   if (!has(SLOT_PRIMARY) && me.slots[SLOT_SECONDARY] !== 3 && me.money >= 700 + 650) return idx("deagle");
+  // Un CT con rifle se compra el kit.
+  if (me.team === TEAM_CT && !me.kit && has(SLOT_PRIMARY) && me.money >= 400 + 300) return idx("kit");
   // Con lo importante comprado, granadas: una flash, una HE, y a veces un humo.
   if (has(SLOT_PRIMARY) && me.armor > 0) {
     if ((me.grenades[1] ?? 0) < 1 && me.money >= 200 + 1200) return idx("flash");
@@ -229,6 +262,9 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
       mem.target = -1;
       mem.lastKnown = null;
       mem.holdUntil = me.team === TEAM_CT ? tick + Math.floor((8 + rng() * 14) * TICK_RATE) : 0;
+      // El sitio de la ronda: los T van todos al mismo (sale de la ronda y la semilla).
+      mem.site = (state.round.number + state.seed + (me.team === TEAM_CT ? Math.floor(rng() * 2) : 0)) % 2;
+      mem.bombKey = "";
     }
     mem.yaw = Math.atan2(-(0 - me.x), -(0 - me.z));
     input.yaw = mem.yaw;
@@ -310,11 +346,32 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
     wantPitch += mem.errPitch;
   }
 
+  // ---- La bomba: si cambió algo (cayó, la plantaron), se replanifica.
+  let bombUse = false;
+  if (state.mode === MODE_BOMB) {
+    const b = state.bomb;
+    const key = `${b.carrier},${b.dropped ? 1 : 0},${b.planted ? 1 : 0}`;
+    if (key !== mem.bombKey) {
+      mem.bombKey = key;
+      mem.goal = null;
+      mem.path = [];
+    }
+    if (!target) {
+      // El portador adentro del sitio planta; el CT al lado de la plantada desactiva.
+      if (me.team === TEAM_T && me.hasBomb && siteAt(map, me.x, me.z) && !b.planted) bombUse = true;
+      if (me.team === TEAM_CT && b.planted && Math.hypot(b.planted.x - me.x, b.planted.z - me.z) <= BOMB_USE_RANGE - 0.1) bombUse = true;
+    }
+  }
+
   // ---- Moverse.
   let fwd = 0;
   let side = 0;
   const hunting = mem.lastKnown !== null && tick - mem.seenAt < 6 * TICK_RATE;
-  if (target) {
+  if (bombUse) {
+    input.use = true;
+    mem.path = [];
+    if ((me.slots[SLOT_PRIMARY] ?? -1) >= 0 && me.active !== SLOT_PRIMARY) input.act = ACT_SLOT_0;
+  } else if (target) {
     // Parado se tira mejor; de a ratos, de costado.
     if (tick >= mem.strafeUntil) {
       // Para un lado, para el otro, o quieto: nunca una caminata larga de costado.
@@ -338,7 +395,7 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
       }
     }
     if (!mem.goal || Math.hypot(mem.goal.x - me.x, mem.goal.z - me.z) < 1.2) {
-      mem.goal = pickGoal(me, mem, map, tick);
+      mem.goal = bombGoal(state, me, mem, map, tick) ?? pickGoal(me, mem, map, tick);
       mem.path = [];
     }
     if (mem.goal && (mem.path.length === 0 || tick >= mem.repathAt)) {

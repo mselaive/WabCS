@@ -15,6 +15,8 @@ export interface PlayerInput {
   crouch: boolean;
   walk: boolean;
   scope: boolean;
+  /** E sostenida: plantar o desactivar. */
+  use: boolean;
   /** Acción puntual del tick (ver ACT_*). */
   act: number;
   /**
@@ -61,6 +63,10 @@ export interface PlayerState {
   grenades: [number, number, number];
   /** Ticks que le quedan ciego por una flash. */
   blindTicks: number;
+  /** Lleva la bomba (modo bomba, un T). */
+  hasBomb: boolean;
+  /** Kit de desactivación (CT). */
+  kit: boolean;
   /** Ticks hasta poder disparar / terminar de recargar / terminar de sacar el arma. */
   fireCd: number;
   reloadCd: number;
@@ -134,8 +140,23 @@ export interface RoundState {
   winRounds: number;
   /** Quién ganó la ronda que se está terminando, o -1. */
   winner: number;
-  reason: "elim" | "time" | "";
+  reason: "elim" | "time" | "bomb" | "defuse" | "";
   swapped: boolean;
+}
+
+/** La bomba (modo bomba): dónde está y qué le está pasando. */
+export interface BombState {
+  /** Quién la lleva, o -1. */
+  carrier: number;
+  /** Tirada en el piso (el portador murió), o null. */
+  dropped: { x: number; y: number; z: number } | null;
+  /** Plantada: dónde, en qué sitio y cuánto le falta para estallar. */
+  planted: { x: number; y: number; z: number; site: string; ticksLeft: number } | null;
+  /** Alguien plantando o desactivando: quién y cuánto le falta. */
+  planting: { id: number; ticksLeft: number; total: number } | null;
+  defusing: { id: number; ticksLeft: number; total: number } | null;
+  /** Ya estalló o se desactivó en esta ronda. */
+  done: boolean;
 }
 
 export interface GameState {
@@ -149,10 +170,15 @@ export interface GameState {
   smokes: SmokeState[];
   nextGrenadeId: number;
   round: RoundState;
+  /** MODE_ELIM o MODE_BOMB. */
+  mode: number;
+  bomb: BombState;
   /** Equipo que ganó el partido, o -1. */
   winnerTeam: number;
   /** Semilla de la partida (para lo que sea aleatorio de verdad en el servidor). */
   seed: number;
+  /** El generador de la partida (quién lleva la bomba). Sólo en el servidor. */
+  rng?: () => number;
   mapIndex: number;
 }
 
@@ -218,4 +244,6 @@ export type SimEvent =
   /** Alguien tiró una granada (para el sonido y para emparejar la predicción). */
   | { t: "throw"; byId: number; seq: number; kind: number; id: number }
   /** Estalló: HE (daño ya aplicado por `hit`), flash (los `blindTicks` van en el snapshot) o humo. */
-  | { t: "explode"; id: number; kind: number; x: number; y: number; z: number };
+  | { t: "explode"; id: number; kind: number; x: number; y: number; z: number }
+  /** La bomba: la plantaron, la desactivaron, estalló, cayó al piso, la levantaron. */
+  | { t: "bomb"; what: "planted" | "defused" | "exploded" | "dropped" | "picked"; byId: number; x: number; y: number; z: number; site: string };

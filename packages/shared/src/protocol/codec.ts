@@ -26,6 +26,7 @@ import {
   SP_Z,
   type ClientMsg,
   type ServerMsg,
+  type SnapBomb,
   type SnapDrop,
   type SnapGrenade,
   type SnapPlayer,
@@ -117,6 +118,7 @@ export function packPlayer(p: PlayerState, own: boolean): SnapPlayer {
       Math.round(p.vy * P),
       (p.grenades[0] ?? 0) + (p.grenades[1] ?? 0) * 4 + (p.grenades[2] ?? 0) * 16,
       p.blindTicks,
+      (p.hasBomb ? 1 : 0) + (p.kit ? 2 : 0),
     );
   }
   return out;
@@ -159,6 +161,8 @@ export interface UnpackedPlayer {
     vy: number;
     grenades: [number, number, number];
     blindTicks: number;
+    hasBomb: boolean;
+    kit: boolean;
   } | null;
 }
 
@@ -185,6 +189,8 @@ export function unpackPlayer(t: SnapPlayer): UnpackedPlayer {
           vy: (t[SP_OWN + 9] ?? 0) / P,
           grenades: [gpacked % 4, Math.floor(gpacked / 4) % 4, Math.floor(gpacked / 16) % 4] as [number, number, number],
           blindTicks: t[SP_OWN + 11] ?? 0,
+          hasBomb: ((t[SP_OWN + 12] ?? 0) & 1) !== 0,
+          kit: ((t[SP_OWN + 12] ?? 0) & 2) !== 0,
         }
       : null;
   return {
@@ -259,9 +265,22 @@ export function unpackSmoke(t: SnapSmoke): SmokeState {
   return { id: t[0], x: t[1] / P, y: t[2] / P, z: t[3] / P, ticksLeft: t[4] };
 }
 
+const REASONS = ["", "elim", "time", "bomb", "defuse"] as const;
+
 export function packRound(state: GameState): SnapRound {
   const r = state.round;
-  return [r.number, r.phase === "freeze" ? 0 : r.phase === "live" ? 1 : 2, r.ticksLeft, r.score[0], r.score[1], r.winRounds, r.winner, r.swapped ? 1 : 0];
+  return [
+    r.number,
+    r.phase === "freeze" ? 0 : r.phase === "live" ? 1 : 2,
+    r.ticksLeft,
+    r.score[0],
+    r.score[1],
+    r.winRounds,
+    r.winner,
+    r.swapped ? 1 : 0,
+    state.mode,
+    Math.max(0, REASONS.indexOf(r.reason)),
+  ];
 }
 
 export interface UnpackedRound {
@@ -272,6 +291,8 @@ export interface UnpackedRound {
   winRounds: number;
   winner: number;
   swapped: boolean;
+  mode: number;
+  reason: (typeof REASONS)[number];
 }
 
 export function unpackRound(t: SnapRound): UnpackedRound {
@@ -283,7 +304,44 @@ export function unpackRound(t: SnapRound): UnpackedRound {
     winRounds: t[5],
     winner: t[6],
     swapped: t[7] === 1,
+    mode: t[8] ?? 0,
+    reason: REASONS[t[9] ?? 0] ?? "",
   };
+}
+
+export function packBomb(state: GameState): SnapBomb {
+  const b = state.bomb;
+  const at = b.planted ?? b.dropped;
+  const busy = b.planting ?? b.defusing;
+  const progress = busy ? Math.round(((busy.total - busy.ticksLeft) / busy.total) * 100) : 0;
+  return [
+    b.carrier,
+    b.planted ? 2 : b.dropped ? 1 : 0,
+    at ? Math.round(at.x * P) : 0,
+    at ? Math.round(at.y * P) : 0,
+    at ? Math.round(at.z * P) : 0,
+    b.planted?.ticksLeft ?? 0,
+    busy?.id ?? -1,
+    progress,
+    b.planted?.site ?? "",
+  ];
+}
+
+export interface UnpackedBomb {
+  carrier: number;
+  /** 0 nadie la tiene a la vista, 1 en el piso, 2 plantada. */
+  state: number;
+  x: number;
+  y: number;
+  z: number;
+  ticksLeft: number;
+  busyId: number;
+  progress: number;
+  site: string;
+}
+
+export function unpackBomb(t: SnapBomb): UnpackedBomb {
+  return { carrier: t[0], state: t[1], x: t[2] / P, y: t[3] / P, z: t[4] / P, ticksLeft: t[5], busyId: t[6], progress: t[7], site: t[8] };
 }
 
 /** La tabla: los que están (el que se fue en plena partida ya no cuenta). */

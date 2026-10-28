@@ -35,6 +35,7 @@ const ui = new UI({
   onBotSkill: (skill) => game.setBotSkill(skill),
   onTeam: (team) => game.setTeam(team),
   onRounds: (win) => game.setRounds(win),
+  onMode: (mode) => game.setMode(mode),
   onChat: (text) => game.chat(text),
   onBuy: (index) => game.buy(index),
   onVolume: (volume) => game?.setVolume(volume),
