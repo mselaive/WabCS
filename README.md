@@ -180,16 +180,28 @@ La dispersión es aleatoria pero **determinista**: sale de quién dispara, el n�
 número de perdigón (`hashUnit`). El cliente y el servidor calculan exactamente la misma bala sin
 compartir ningún generador, y por eso el trazador que ves al apretar va por donde va la bala real.
 
-## El mapa
+## Los mapas
 
-**Bodega**: un depósito de 44 × 32 m con tres caminos entre los dos spawns. Mid es una casita con
-cuatro puertas para pelear de cerca; a la izquierda, un pasillo largo con cajones, para rifles; a
-la derecha, tabiques en zigzag y una plataforma baja a la que se sube caminando.
+El host elige el mapa en la sala (se ve de fondo). Los dos son de 44 × 32 m y simétricos por un
+giro de 180° alrededor del centro: se dibuja la mitad de los T y se gira para los CT, así nadie
+tiene ventaja de mapa, sólo de lado, y el lado se cambia a la mitad.
 
-Está en `packages/shared/src/map/bodega.ts` como una lista de cajas alineadas a los ejes, con
-funciones `box()` y `crate()`. Se dibuja la mitad de los T y se gira 180° para los CT: nadie tiene
-ventaja de mapa, sólo de lado, y el lado se cambia a la mitad. Agregar un mapa es agregar otro
-archivo así y ponerlo en `MAPS`.
+**Bodega**: un depósito con tres caminos. Mid es una casita de hormigón con cuatro puertas para
+pelear de cerca; a la izquierda, un garaje con puerta, ventana y techo al que se sube por una
+escalera pegada al muro (el puesto de francotirador, con parapeto); a la derecha, dos contenedores
+en zigzag y una plataforma baja a la que se sube caminando. Sitios: A adentro del garaje CT, B en
+la calle izquierda.
+
+**Patio**: una plaza con una fuente escalonada en el medio (se sube de a 40 cm) y dos tiendas
+enfrentadas con puerta a la plaza y ventana a la calle; a la izquierda una calle larga y abierta
+con sacos de arena, para francotiradores; a la derecha un túnel techado y oscuro, para escopetas
+y subfusiles. Sitios: A adentro de la tienda CT, B al final de la calle larga.
+
+Están en `packages/shared/src/map/` como listas de cajas alineadas a los ejes, con funciones
+`box()`, `crate()`, `barrel()`, `pillar()` y `sandbags()`. Agregar un mapa es agregar otro archivo
+así y ponerlo en `MAPS`; `maps.test.ts` le exige lo mismo que a los demás: simetría, spawns
+libres, sitios del lado CT, que se llegue caminando y con la grilla de los bots a todos lados, y
+que nada flote.
 
 Las texturas son de prototipo (color plano con grilla de 1 m y 25 cm, bisel en cada baldosa, un
 poco de ruido y manchas), generadas con canvas en `render/textures.ts`. Un tile es un metro: la
