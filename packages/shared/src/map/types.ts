@@ -76,4 +76,6 @@ export const TEX_SANDBAG = 14;
 export const TEX_BARREL = 15;
 /** Rayas amarillas y negras: el piso de los sitios de la bomba. */
 export const TEX_SITE = 16;
-export const TEX_COUNT = 17;
+/** Adoquines grises: el piso de una plaza. */
+export const TEX_PAVERS = 17;
+export const TEX_COUNT = 18;

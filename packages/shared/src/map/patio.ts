@@ -7,6 +7,7 @@ import {
   TEX_CT,
   TEX_FLOOR,
   TEX_METAL,
+  TEX_PAVERS,
   TEX_PLASTER,
   TEX_ROOF,
   TEX_SANDBAG,
@@ -54,7 +55,8 @@ function build(): GameMap {
   const boxes: Box[] = [];
 
   // ---- Piso, calles y muro.
-  boxes.push(box(-HALF_X, -0.5, -HALF_Z, HALF_X, 0, HALF_Z, TEX_FLOOR));
+  // Adoquines en la plaza; asfalto en las calles; baldosas adentro de las tiendas.
+  boxes.push(box(-HALF_X, -0.5, -HALF_Z, HALF_X, 0, HALF_Z, TEX_PAVERS));
   boxes.push({ ...box(-HALF_X, 0, -HALF_Z, -13, 0.01, HALF_Z, TEX_ASPHALT), decal: true });
   boxes.push({ ...box(13, 0, -HALF_Z, HALF_X, 0.01, HALF_Z, TEX_ASPHALT), decal: true });
   boxes.push(box(-HALF_X - WALL_T, 0, -HALF_Z - WALL_T, HALF_X + WALL_T, WALL_H, -HALF_Z, TEX_BRICK));
@@ -93,6 +95,7 @@ function build(): GameMap {
   half.push(box(-11, 1.1, 3, -10.7, 2.0, 4.2, TEX_PLASTER));
   half.push(box(-11, 1.1, 5.8, -10.7, 2.0, 7, TEX_PLASTER));
   half.push(box(-11.2, 3, 2.8, -5.8, 3.25, 7.2, TEX_ROOF));
+  half.push({ ...box(-10.7, 0, 3.3, -6.3, 0.008, 6.7, TEX_FLOOR), decal: true });
   half.push(crate(-9.5, 6, 1.0, 0, TEX_WOOD));
 
   // El tabique que separa la calle larga de la plaza (x -13..-12,5), con una puerta en z 1..3.
@@ -116,6 +119,11 @@ function build(): GameMap {
   // A la salida del túnel, del lado del spawn: barriles.
   half.push(barrel(15, 11));
   half.push(barrel(15.7, 11.4));
+
+  // Bancos y canteros en la plaza: cobertura baja (los bancos se suben de un paso).
+  half.push(box(-1.2, 0, 4.8, 1.2, 0.44, 5.3, TEX_WOOD));
+  half.push(box(8.4, 0, -0.6, 9.6, 0.9, 0.6, TEX_BRICK));
+  half.push(box(-9.2, 0, 1.2, -8.7, 0.44, 3.6, TEX_WOOD));
 
   // Cajones en la plaza.
   half.push(crate(-3.5, 5.5, 1.2));

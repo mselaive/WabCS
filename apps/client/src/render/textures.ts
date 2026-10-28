@@ -7,6 +7,7 @@ import {
   TEX_CONTAINER_BLUE,
   TEX_CONTAINER_RED,
   TEX_COUNT,
+  TEX_PAVERS,
   TEX_CRATE,
   TEX_CT,
   TEX_FLOOR,
@@ -55,6 +56,7 @@ const STYLES: Record<number, Style> = {
   [TEX_CONTAINER_RED]: { base: "#a9443a", line: "#5f2420", fine: "#9d3f36", deco: "ribs", bevel: 0.3, grime: 0.7 },
   [TEX_SANDBAG]: { base: "#b5a36f", line: "#7a6b45", fine: "#a99761", deco: "sacks", bevel: 0.2, grime: 0.6 },
   [TEX_BARREL]: { base: "#8a4a2c", line: "#4a2715", fine: "#7f4428", deco: "barrel", bevel: 0.3, grime: 0.9 },
+  [TEX_PAVERS]: { base: "#a39c90", line: "#6f685e", fine: "#978f82", deco: "bricks", bevel: 0.45, grime: 0.7 },
 };
 
 let seed = 12345;
