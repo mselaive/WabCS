@@ -10,6 +10,7 @@ import {
   LEG_HEIGHT,
   MAX_MONEY,
   PLAYER_HALF_W,
+  TAG_TICKS,
   TRAIL_LENGTH,
   ZONE_BODY,
   ZONE_HEAD,
@@ -17,8 +18,8 @@ import {
   ZONE_MULT,
 } from "../constants.js";
 import { hashUnit, lerp, viewDir, type Vec3 } from "../math.js";
-import { rayAabb, raycastBoxes } from "../map/raycast.js";
-import type { GameMap } from "../map/types.js";
+import { rayAabb, raycastBoxes, type RayHit } from "../map/raycast.js";
+import type { Box, GameMap } from "../map/types.js";
 import { HE_GRENADE, KNIFE, SLOT_GRENADE, SLOT_KNIFE, grenadeKind, weapon, type WeaponDef } from "../weapons.js";
 import { eyeHeightOf, heightOf } from "./movement.js";
 import { dropWeaponAt } from "./inventory.js";
@@ -294,6 +295,47 @@ const scratch: Vec3 = { x: 0, y: 0, z: 0 };
  * rivales tal como los veía el que disparó (rebobinados `rewind` ticks).
  * Agrega el evento `shot` (con dónde terminó cada perdigón) y los `hit`/`kill`.
  */
+/**
+ * Un tramo del recorrido de una bala: de `from` a `to` metros desde el ojo.
+ * Si `hitWorld`, en `to` pegó contra una caja (con esa normal). `mul` es lo
+ * que le queda de daño: 1 en el primer tramo, menos después de una pared.
+ */
+export interface BulletSegment {
+  from: number;
+  to: number;
+  mul: number;
+  hitWorld: boolean;
+  nx: number;
+  ny: number;
+  nz: number;
+}
+
+/**
+ * Por dónde pasa una bala: hasta la primera caja y, si es más fina que lo que
+ * el arma atraviesa (`wall`), un segundo tramo del otro lado con menos daño.
+ * Lo usan el servidor para resolver el tiro y el cliente para dibujarlo igual.
+ */
+export function bulletSegments(
+  ox: number, oy: number, oz: number,
+  dx: number, dy: number, dz: number,
+  boxes: readonly Box[], maxRange: number, wall: number,
+): BulletSegment[] {
+  const hit: RayHit = { t: 0, exit: 0, nx: 0, ny: 0, nz: 0 };
+  const t = raycastBoxes(ox, oy, oz, dx, dy, dz, boxes, maxRange, hit);
+  if (t < 0) return [{ from: 0, to: maxRange, mul: 1, hitWorld: false, nx: 0, ny: 0, nz: 0 }];
+  const segs: BulletSegment[] = [{ from: 0, to: t, mul: 1, hitWorld: true, nx: hit.nx, ny: hit.ny, nz: hit.nz }];
+  const thick = hit.exit - t;
+  if (wall > 0 && thick <= wall && hit.exit < maxRange) {
+    // Sale del otro lado: sigue desde un pelito después de la cara de salida.
+    const start = hit.exit + 0.02;
+    const t2 = raycastBoxes(ox + dx * start, oy + dy * start, oz + dz * start, dx, dy, dz, boxes, maxRange - start, hit);
+    const mul = 0.45 + 0.35 * (1 - thick / wall);
+    if (t2 < 0) segs.push({ from: start, to: maxRange, mul, hitWorld: false, nx: 0, ny: 0, nz: 0 });
+    else segs.push({ from: start, to: start + t2, mul, hitWorld: true, nx: hit.nx, ny: hit.ny, nz: hit.nz });
+  }
+  return segs;
+}
+
 export function resolveShot(
   state: GameState,
   shooter: PlayerState,
@@ -312,36 +354,40 @@ export function resolveShot(
   const hits: number[] = [];
 
   for (const d of dirs) {
-    let best = raycastBoxes(ox, oy, oz, d.x, d.y, d.z, map.boxes, maxRange);
-    let kind = best >= 0 ? HIT_WORLD : HIT_NONE;
-    if (best < 0) best = maxRange;
-    let target: PlayerState | null = null;
-    let zone = ZONE_BODY;
+    // Tramo a tramo: el primero hasta la pared; si la atraviesa, otro del otro lado.
+    for (const seg of bulletSegments(ox, oy, oz, d.x, d.y, d.z, map.boxes, maxRange, w.wall)) {
+      let best = seg.to;
+      let kind = seg.hitWorld ? HIT_WORLD : HIT_NONE;
+      let target: PlayerState | null = null;
+      let zone = ZONE_BODY;
 
-    for (const q of state.players) {
-      if (q === shooter || !q.alive || !q.connected || q.team === shooter.team) continue;
-      pastPosition(q, state.tick, rewind, scratch);
-      const h = heightOf(q);
-      const t = rayAabb(ox, oy, oz, d.x, d.y, d.z, scratch.x, scratch.y + h / 2, scratch.z, PLAYER_HALF_W, h / 2, PLAYER_HALF_W, best);
-      if (t < 0 || t >= best) continue;
-      best = t;
-      target = q;
-      const hitY = oy + d.y * t;
-      const rel = hitY - scratch.y;
-      zone = rel > h - HEAD_HEIGHT ? ZONE_HEAD : rel < LEG_HEIGHT ? ZONE_LEGS : ZONE_BODY;
-      kind = zone === ZONE_HEAD ? HIT_HEAD : HIT_BODY;
-    }
+      for (const q of state.players) {
+        if (q === shooter || !q.alive || !q.connected || q.team === shooter.team) continue;
+        pastPosition(q, state.tick, rewind, scratch);
+        const h = heightOf(q);
+        const t = rayAabb(ox, oy, oz, d.x, d.y, d.z, scratch.x, scratch.y + h / 2, scratch.z, PLAYER_HALF_W, h / 2, PLAYER_HALF_W, best);
+        if (t < seg.from || t >= best) continue;
+        best = t;
+        target = q;
+        const hitY = oy + d.y * t;
+        const rel = hitY - scratch.y;
+        zone = rel > h - HEAD_HEIGHT ? ZONE_HEAD : rel < LEG_HEIGHT ? ZONE_LEGS : ZONE_BODY;
+        kind = zone === ZONE_HEAD ? HIT_HEAD : HIT_BODY;
+      }
 
-    const ex = ox + d.x * best;
-    const ey = oy + d.y * best;
-    const ez = oz + d.z * best;
-    hits.push(Math.round(ex * 100) / 100, Math.round(ey * 100) / 100, Math.round(ez * 100) / 100, kind);
+      const ex = ox + d.x * best;
+      const ey = oy + d.y * best;
+      const ez = oz + d.z * best;
+      hits.push(Math.round(ex * 100) / 100, Math.round(ey * 100) / 100, Math.round(ez * 100) / 100, kind);
 
-    if (target) {
-      let dmg = w.damage * ZONE_MULT[zone]! * Math.pow(w.range, best / 10);
-      dmg = applyArmor(target, dmg, zone, w.pen);
-      dmg = Math.max(1, Math.round(dmg));
-      damagePlayer(state, target, shooter, dmg, zone, wid, ex, ey, ez, map, events);
+      if (target) {
+        let dmg = w.damage * ZONE_MULT[zone]! * Math.pow(w.range, best / 10) * seg.mul;
+        dmg = applyArmor(target, dmg, zone, w.pen);
+        dmg = Math.max(1, Math.round(dmg));
+        damagePlayer(state, target, shooter, dmg, zone, wid, ex, ey, ez, map, events);
+        // La bala se queda en el cuerpo: no sigue a la pared de atrás.
+        break;
+      }
     }
   }
 
@@ -364,6 +410,8 @@ export function damagePlayer(
   const applied = Math.min(dmg, target.hp);
   target.hp -= applied;
   by.damage += applied;
+  // Un tiro frena: no se escapa de un duelo corriendo a toda velocidad.
+  target.tagged = TAG_TICKS;
   events.push({ t: "hit", targetId: target.id, byId: by.id, amount: applied, zone, x, y, z });
   if (target.hp > 0) return;
 

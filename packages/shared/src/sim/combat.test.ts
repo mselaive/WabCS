@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { BODEGA } from "../map/bodega.js";
-import { HEAD_HEIGHT, LAG_COMP_MAX_TICKS, TEAM_CT, TEAM_T, ZONE_BODY, ZONE_HEAD } from "../constants.js";
+import { HEAD_HEIGHT, LAG_COMP_MAX_TICKS, TAG_TICKS, TEAM_CT, TEAM_T, ZONE_BODY, ZONE_HEAD } from "../constants.js";
 import { AK47, AWP, GLOCK, KNIFE, NOVA, SLOT_PRIMARY, SLOT_SECONDARY, USP, weapon } from "../weapons.js";
 import { applyArmor, recordTrail, resetTrail, resolveShot, shotDirections, shotRewind, stepWeaponState } from "./combat.js";
-import { eyeHeightOf } from "./movement.js";
+import { eyeHeightOf, maxSpeedOf, stepPlayerMovement } from "./movement.js";
 import { createGameState, createPlayer } from "./step.js";
 import type { PlayerInput, SimEvent } from "./types.js";
 
@@ -157,6 +157,43 @@ describe("el tiro", () => {
     expect(events.some((e) => e.t === "hit")).toBe(false);
     const shot = events.find((e) => e.t === "shot");
     expect(shot?.t === "shot" && shot.hits[3]).toBe(1);
+  });
+
+  it("el AK atraviesa una pared fina con menos daño; la gruesa frena la bala", () => {
+    const thin = { ...BODEGA, boxes: [{ minX: -2, minY: 0, minZ: -5.1, maxX: 2, maxY: 3, maxZ: -4.9, tex: 1 }] };
+    const a = duel(AK47, 10);
+    resolveShot(a.state, a.shooter, AK47, 1, 0, thin, a.events);
+    const hit = a.events.find((e) => e.t === "hit");
+    expect(hit).toBeDefined();
+    const full = weapon(AK47).damage * Math.pow(weapon(AK47).range, 1);
+    expect(hit?.t === "hit" && hit.amount).toBeLessThan(full);
+    expect(hit?.t === "hit" && hit.amount).toBeGreaterThan(full * 0.4);
+    // El evento trae los dos puntos: la pared y el cuerpo.
+    const shot = a.events.find((e) => e.t === "shot");
+    expect(shot?.t === "shot" && shot.hits.length).toBe(8);
+    expect(shot?.t === "shot" && shot.hits[3]).toBe(1);
+    expect(shot?.t === "shot" && shot.hits[7]).toBe(2);
+
+    const thick = { ...BODEGA, boxes: [{ minX: -2, minY: 0, minZ: -5.5, maxX: 2, maxY: 3, maxZ: -4.5, tex: 1 }] };
+    const b = duel(AK47, 10);
+    resolveShot(b.state, b.shooter, AK47, 1, 0, thick, b.events);
+    expect(b.events.some((e) => e.t === "hit")).toBe(false);
+
+    // La pistola no atraviesa ni la fina.
+    const c = duel(USP, 10);
+    resolveShot(c.state, c.shooter, USP, 1, 0, thin, c.events);
+    expect(c.events.some((e) => e.t === "hit")).toBe(false);
+  });
+
+  it("un tiro recibido frena al que lo recibe por unos ticks", () => {
+    const { state, shooter, target, events } = duel(AK47, 8);
+    resolveShot(state, shooter, AK47, 1, 0, BODEGA, events);
+    expect(target.tagged).toBe(TAG_TICKS);
+    const slow = maxSpeedOf(target, input());
+    expect(slow).toBeLessThan(weapon(USP).speed * 0.5);
+    for (let i = 0; i < TAG_TICKS; i++) stepPlayerMovement(target, input(), BODEGA, true);
+    expect(target.tagged).toBe(0);
+    expect(maxSpeedOf(target, input())).toBe(weapon(USP).speed);
   });
 
   it("al morir se le caen las armas", () => {

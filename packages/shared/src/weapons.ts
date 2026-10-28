@@ -40,6 +40,8 @@ export interface WeaponDef {
   spreadShot: number;
   /** Dispersión que agrega moverse a toda velocidad. */
   spreadMove: number;
+  /** Grosor de pared (m) que la bala todavía atraviesa; 0, ninguno. */
+  wall: number;
   /** Velocidad máxima con ella en la mano (m/s). */
   speed: number;
   /** 0 sin mira; si no, el factor de zoom (la dispersión con mira es casi nula). */
@@ -63,63 +65,63 @@ export const WEAPONS: readonly WeaponDef[] = [
   W({
     id: 0, name: "Cuchillo", short: "Cuchillo", slot: SLOT_KNIFE, price: 0, team: -1,
     damage: 45, range: 1, pen: 0.85, mag: 0, reserve: 0, fireTicks: 10, reloadTicks: 0, drawTicks: 4,
-    auto: true, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.2, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 1.3,
+    auto: true, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.2, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 1.3, wall: 0,
   }),
   W({
     id: 1, name: "Glock-18", short: "Glock", slot: SLOT_SECONDARY, price: 200, team: TEAM_T,
     damage: 28, range: 0.82, pen: 0.47, mag: 20, reserve: 120, fireTicks: 3, reloadTicks: 44, drawTicks: 6,
-    auto: false, pellets: 1, spread: 0.011, spreadShot: 0.006, spreadMove: 0.035, speed: 5.0, zoom: 0, kick: 0.012, recoilUp: 0.03, recoilSide: 0.012, melee: 0,
+    auto: false, pellets: 1, spread: 0.011, spreadShot: 0.006, spreadMove: 0.035, speed: 5.0, zoom: 0, kick: 0.012, recoilUp: 0.03, recoilSide: 0.012, melee: 0, wall: 0.08,
   }),
   W({
     id: 2, name: "USP-S", short: "USP", slot: SLOT_SECONDARY, price: 200, team: TEAM_CT,
     damage: 35, range: 0.84, pen: 0.505, mag: 12, reserve: 24, fireTicks: 3, reloadTicks: 44, drawTicks: 6,
-    auto: false, pellets: 1, spread: 0.009, spreadShot: 0.006, spreadMove: 0.035, speed: 5.0, zoom: 0, kick: 0.014, recoilUp: 0.03, recoilSide: 0.012, melee: 0,
+    auto: false, pellets: 1, spread: 0.009, spreadShot: 0.006, spreadMove: 0.035, speed: 5.0, zoom: 0, kick: 0.014, recoilUp: 0.03, recoilSide: 0.012, melee: 0, wall: 0.08,
   }),
   W({
     id: 3, name: "Desert Eagle", short: "Deagle", slot: SLOT_SECONDARY, price: 700, team: -1,
     damage: 53, range: 0.86, pen: 0.932, mag: 7, reserve: 35, fireTicks: 4, reloadTicks: 44, drawTicks: 6,
-    auto: false, pellets: 1, spread: 0.013, spreadShot: 0.02, spreadMove: 0.05, speed: 4.8, zoom: 0, kick: 0.03, recoilUp: 0.07, recoilSide: 0.03, melee: 0,
+    auto: false, pellets: 1, spread: 0.013, spreadShot: 0.02, spreadMove: 0.05, speed: 4.8, zoom: 0, kick: 0.03, recoilUp: 0.07, recoilSide: 0.03, melee: 0, wall: 0.32,
   }),
   W({
     id: 4, name: "MP5-SD", short: "MP5", slot: SLOT_PRIMARY, price: 1500, team: -1,
     damage: 27, range: 0.86, pen: 0.57, mag: 30, reserve: 120, fireTicks: 2, reloadTicks: 52, drawTicks: 8,
-    auto: true, pellets: 1, spread: 0.008, spreadShot: 0.0022, spreadMove: 0.03, speed: 5.0, zoom: 0, kick: 0.008, recoilUp: 0.05, recoilSide: 0.02, melee: 0,
+    auto: true, pellets: 1, spread: 0.008, spreadShot: 0.0022, spreadMove: 0.03, speed: 5.0, zoom: 0, kick: 0.008, recoilUp: 0.05, recoilSide: 0.02, melee: 0, wall: 0.16,
   }),
   W({
     id: 5, name: "AK-47", short: "AK-47", slot: SLOT_PRIMARY, price: 2700, team: TEAM_T,
     damage: 36, range: 0.98, pen: 0.775, mag: 30, reserve: 90, fireTicks: 2, reloadTicks: 50, drawTicks: 8,
-    auto: true, pellets: 1, spread: 0.0045, spreadShot: 0.0042, spreadMove: 0.06, speed: 4.6, zoom: 0, kick: 0.016, recoilUp: 0.11, recoilSide: 0.045, melee: 0,
+    auto: true, pellets: 1, spread: 0.0045, spreadShot: 0.0042, spreadMove: 0.06, speed: 4.6, zoom: 0, kick: 0.016, recoilUp: 0.11, recoilSide: 0.045, melee: 0, wall: 0.4,
   }),
   W({
     id: 6, name: "M4A4", short: "M4A4", slot: SLOT_PRIMARY, price: 3100, team: TEAM_CT,
     damage: 33, range: 0.97, pen: 0.7, mag: 30, reserve: 90, fireTicks: 2, reloadTicks: 62, drawTicks: 8,
-    auto: true, pellets: 1, spread: 0.004, spreadShot: 0.0036, spreadMove: 0.055, speed: 4.8, zoom: 0, kick: 0.013, recoilUp: 0.085, recoilSide: 0.035, melee: 0,
+    auto: true, pellets: 1, spread: 0.004, spreadShot: 0.0036, spreadMove: 0.055, speed: 4.8, zoom: 0, kick: 0.013, recoilUp: 0.085, recoilSide: 0.035, melee: 0, wall: 0.35,
   }),
   W({
     id: 7, name: "Nova", short: "Nova", slot: SLOT_PRIMARY, price: 1050, team: -1,
     damage: 26, range: 0.5, pen: 0.5, mag: 8, reserve: 32, fireTicks: 18, reloadTicks: 60, drawTicks: 8,
-    auto: false, pellets: 9, spread: 0.045, spreadShot: 0.01, spreadMove: 0.03, speed: 4.6, zoom: 0, kick: 0.045, recoilUp: 0.02, recoilSide: 0.01, melee: 0,
+    auto: false, pellets: 9, spread: 0.045, spreadShot: 0.01, spreadMove: 0.03, speed: 4.6, zoom: 0, kick: 0.045, recoilUp: 0.02, recoilSide: 0.01, melee: 0, wall: 0,
   }),
   W({
     id: 8, name: "AWP", short: "AWP", slot: SLOT_PRIMARY, price: 4750, team: -1,
     damage: 115, range: 0.99, pen: 0.975, mag: 5, reserve: 30, fireTicks: 30, reloadTicks: 74, drawTicks: 12,
-    auto: false, pellets: 1, spread: 0.09, spreadShot: 0.02, spreadMove: 0.08, speed: 4.0, zoom: 4, kick: 0.06, recoilUp: 0.02, recoilSide: 0.0, melee: 0,
+    auto: false, pellets: 1, spread: 0.09, spreadShot: 0.02, spreadMove: 0.08, speed: 4.0, zoom: 4, kick: 0.06, recoilUp: 0.02, recoilSide: 0.0, melee: 0, wall: 0.6,
   }),
   // Las granadas: "disparar" es tirarla. El daño de la HE está en HE_DAMAGE.
   W({
     id: 9, name: "Granada HE", short: "HE", slot: SLOT_GRENADE, price: 300, team: -1,
     damage: 0, range: 1, pen: 0.5, mag: 0, reserve: 0, fireTicks: 16, reloadTicks: 0, drawTicks: 8,
-    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0,
+    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0, wall: 0,
   }),
   W({
     id: 10, name: "Flash", short: "Flash", slot: SLOT_GRENADE, price: 200, team: -1,
     damage: 0, range: 1, pen: 0.5, mag: 0, reserve: 0, fireTicks: 16, reloadTicks: 0, drawTicks: 8,
-    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0,
+    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0, wall: 0,
   }),
   W({
     id: 11, name: "Humo", short: "Humo", slot: SLOT_GRENADE, price: 300, team: -1,
     damage: 0, range: 1, pen: 0.5, mag: 0, reserve: 0, fireTicks: 16, reloadTicks: 0, drawTicks: 8,
-    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0,
+    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0, wall: 0,
   }),
 ];
 

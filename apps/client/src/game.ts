@@ -28,6 +28,7 @@ import {
   TEAM_NAMES,
   TEAM_T,
   ZONE_HEAD,
+  bulletSegments,
   distXZ,
   eyeHeightOf,
   grenadeKind,
@@ -656,7 +657,7 @@ export class Game {
     const dz = to.z - oz;
     const len = Math.hypot(dx, dy, dz);
     if (len < 0.01) return;
-    const hit: RayHit = { t: 0, nx: 0, ny: 0, nz: 0 };
+    const hit: RayHit = { t: 0, exit: 0, nx: 0, ny: 0, nz: 0 };
     if (raycastBoxes(ox, oy, oz, dx / len, dy / len, dz / len, this.map.boxes, len + 0.05, hit) < 0) return;
     this.effects.bulletHole(to, new THREE.Vector3(hit.nx, hit.ny, hit.nz));
   }
@@ -946,32 +947,33 @@ export class Game {
     // Los rivales tal como se ven ahora: si la bala los toca, la sangre y el
     // hitmarker salen ya; el daño lo confirma el servidor un instante después.
     const enemies = (this.lastInterp?.players ?? []).filter((p) => p.alive && p.connected && p.team !== s.team && p.id !== this.myId);
-    const hit: RayHit = { t: 0, nx: 0, ny: 0, nz: 0 };
     let anyHit = false;
     let anyHead = false;
     for (const d of shot.dirs) {
-      let t = raycastBoxes(ox, oy, oz, d.x, d.y, d.z, this.map.boxes, shotRange(w), hit);
-      const landed = t >= 0;
-      if (!landed) t = Math.min(TRACER_MAX, shotRange(w));
-      let victim: UnpackedPlayer | null = null;
-      let head = false;
-      for (const e of enemies) {
-        const h = heightOf(e);
-        const te = rayAabb(ox, oy, oz, d.x, d.y, d.z, e.x, e.y + h / 2, e.z, PLAYER_HALF_W, h / 2, PLAYER_HALF_W, t);
-        if (te < 0 || te >= t) continue;
-        t = te;
-        victim = e;
-        head = oy + d.y * te - e.y > h - HEAD_HEIGHT;
-      }
-      const to = new THREE.Vector3(ox + d.x * t, oy + d.y * t, oz + d.z * t);
-      this.effects.tracer(from, to);
-      if (victim) {
-        this.effects.blood(to, head);
-        anyHit = true;
-        anyHead ||= head;
-      } else if (landed) {
-        this.effects.dust(to);
-        this.effects.bulletHole(to, new THREE.Vector3(hit.nx, hit.ny, hit.nz));
+      // Los mismos tramos que el servidor: si la pared es fina, la bala sigue del otro lado.
+      for (const seg of bulletSegments(ox, oy, oz, d.x, d.y, d.z, this.map.boxes, shotRange(w), w.wall)) {
+        let t = seg.hitWorld ? seg.to : Math.min(TRACER_MAX, seg.to);
+        let victim: UnpackedPlayer | null = null;
+        let head = false;
+        for (const e of enemies) {
+          const h = heightOf(e);
+          const te = rayAabb(ox, oy, oz, d.x, d.y, d.z, e.x, e.y + h / 2, e.z, PLAYER_HALF_W, h / 2, PLAYER_HALF_W, t);
+          if (te < seg.from || te >= t) continue;
+          t = te;
+          victim = e;
+          head = oy + d.y * te - e.y > h - HEAD_HEIGHT;
+        }
+        const to = new THREE.Vector3(ox + d.x * t, oy + d.y * t, oz + d.z * t);
+        this.effects.tracer(seg.from === 0 ? from : new THREE.Vector3(ox + d.x * seg.from, oy + d.y * seg.from, oz + d.z * seg.from), to);
+        if (victim) {
+          this.effects.blood(to, head);
+          anyHit = true;
+          anyHead ||= head;
+          break;
+        } else if (seg.hitWorld) {
+          this.effects.dust(to);
+          this.effects.bulletHole(to, new THREE.Vector3(seg.nx, seg.ny, seg.nz));
+        }
       }
     }
     if (anyHit) {

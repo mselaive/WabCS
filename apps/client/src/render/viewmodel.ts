@@ -108,16 +108,19 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
     case GLOCK:
       pistol(g, POLYMER, POLYMER, 0.19, 0.034);
       rightHand = [0, -0.06, 0.01];
+      leftHand = [-0.045, -0.07, 0.01];
       break;
     case USP:
       pistol(g, STEEL, POLYMER, 0.2, 0.036);
       tube(g, 0.015, 0.11, 0, 0.032, -0.26, POLYMER, 12);
       rightHand = [0, -0.06, 0.01];
+      leftHand = [-0.045, -0.07, 0.01];
       break;
     case DEAGLE:
       pistol(g, SILVER, TAN, 0.26, 0.046);
       box(g, 0.034, 0.012, 0.2, 0, 0.06, -0.09, SILVER);
       rightHand = [0, -0.06, 0.01];
+      leftHand = [-0.048, -0.075, 0.01];
       break;
     case MP5: {
       box(g, 0.044, 0.06, 0.36, 0, 0.03, -0.1, POLYMER);
@@ -227,14 +230,25 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
   }
 
   if (firstPerson) {
-    // Mano derecha en la empuñadura y la manga que sale hacia la cámara.
+    // Mano derecha en la empuñadura y la manga que sale hacia la cámara. Van
+    // en grupos con nombre: la izquierda saca el cargador y bombea, la derecha
+    // trabaja el cerrojo.
     const [hx, hy, hz] = rightHand;
-    box(g, 0.065, 0.075, 0.07, hx + 0.012, hy, hz, SKIN, 0.2);
-    box(g, 0.075, 0.08, 0.28, hx + 0.03, hy - 0.08, hz + 0.2, SLEEVE, 0.35);
+    const rh = new THREE.Group();
+    rh.name = "rhand";
+    g.add(rh);
+    box(rh, 0.065, 0.075, 0.07, hx + 0.012, hy, hz, SKIN, 0.2);
+    // Los dedos: cuatro cajitas que envuelven la empuñadura.
+    for (let i = 0; i < 4; i++) box(rh, 0.016, 0.014, 0.05, hx - 0.018, hy + 0.024 - i * 0.016, hz - 0.012, SKIN, 0.2);
+    box(rh, 0.075, 0.08, 0.28, hx + 0.03, hy - 0.08, hz + 0.2, SLEEVE, 0.35);
     if (leftHand) {
       const [lx, ly, lz] = leftHand;
-      box(g, 0.07, 0.06, 0.08, lx - 0.01, ly - 0.03, lz, SKIN, 0, 0, 0.2);
-      box(g, 0.075, 0.08, 0.26, lx - 0.12, ly - 0.15, lz + 0.14, SLEEVE, 0.55, -0.35, 0);
+      const lh = new THREE.Group();
+      lh.name = "lhand";
+      g.add(lh);
+      box(lh, 0.07, 0.06, 0.08, lx - 0.01, ly - 0.03, lz, SKIN, 0, 0, 0.2);
+      for (let i = 0; i < 4; i++) box(lh, 0.014, 0.016, 0.05, lx + 0.028, ly - 0.012, lz - 0.03 + i * 0.016, SKIN, 0, 0, 0.2);
+      box(lh, 0.075, 0.08, 0.26, lx - 0.12, ly - 0.15, lz + 0.14, SLEEVE, 0.55, -0.35, 0);
     }
   }
   return g;
@@ -317,6 +331,10 @@ export class ViewModel {
   private boltHome = new THREE.Vector3();
   private pump: THREE.Object3D | null = null;
   private pumpHome = new THREE.Vector3();
+  private lhand: THREE.Object3D | null = null;
+  private lhandHome = new THREE.Vector3();
+  private rhand: THREE.Object3D | null = null;
+  private rhandHome = new THREE.Vector3();
   private readonly flash: THREE.Mesh;
   private flashLeft = 0;
   private kick = 0;
@@ -340,8 +358,8 @@ export class ViewModel {
   constructor(camera: THREE.Camera) {
     camera.add(this.root);
     // A la derecha y abajo, apuntando un poco hacia el centro: como se sostiene.
-    this.root.position.set(0.21, -0.19, -0.34);
-    this.root.rotation.set(0.04, 0.12, 0.03);
+    this.root.position.set(0.19, -0.15, -0.32);
+    this.root.rotation.set(0.05, 0.1, 0.03);
     const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.95, depthWrite: false });
     this.flash = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), flashMat);
     this.flash.visible = false;
@@ -363,6 +381,8 @@ export class ViewModel {
     this.slide = find("slide", this.slideHome);
     this.bolt = find("bolt", this.boltHome);
     this.pump = find("pump", this.pumpHome);
+    this.lhand = find("lhand", this.lhandHome);
+    this.rhand = find("rhand", this.rhandHome);
     this.drawTotal = Math.max(0.15, weapon(id).drawTicks * 0.05);
     this.drawT = this.drawTotal;
     this.reloadT = 0;
@@ -457,6 +477,12 @@ export class ViewModel {
     let tiltX = 0;
     let tiltZ = 0;
     let dropY = 0;
+    // Lo que se corren las manos respecto de donde agarran el arma.
+    let lhX = 0;
+    let lhY = 0;
+    let lhZ = 0;
+    let rhY = 0;
+    let rhZ = 0;
     if (reloading) {
       const inOut = Math.sin(Math.PI * Math.min(1, rt));
       tiltZ = 0.4 * inOut;
@@ -470,6 +496,14 @@ export class ViewModel {
         else if (rt < 0.85) magOff = -0.3 * (1 - smooth((rt - 0.55) / 0.3));
         this.mag.visible = visible;
         this.mag.position.set(this.magHome.x, this.magHome.y + magOff, this.magHome.z + (visible ? magOff * 0.3 : 0));
+        // La mano izquierda saca el cargador, baja a buscar el otro y lo trae.
+        lhY = visible ? magOff : -0.3;
+        lhZ = (visible ? magOff * 0.3 : -0.09) + 0.04 * inOut;
+        lhX = -0.03 * inOut;
+      } else {
+        // Sin cargador (la escopeta): la mano mete los cartuchos de a uno.
+        lhY = -0.07 * Math.abs(Math.sin(rt * Math.PI * 4)) - 0.03 * inOut;
+        lhZ = 0.1 * inOut;
       }
       // El golpe final (cerrojo o palmada al cargador).
       if (rt > 0.85) tiltX += -0.12 * Math.sin(Math.PI * (rt - 0.85) / 0.15);
@@ -489,12 +523,21 @@ export class ViewModel {
       if (this.bolt) {
         this.bolt.position.set(this.boltHome.x, this.boltHome.y + 0.03 * back, this.boltHome.z + 0.06 * back);
         cycleTilt = 0.08 * back;
+        // La derecha suelta la empuñadura y trabaja el cerrojo.
+        rhY = 0.05 * back;
+        rhZ = 0.04 * back;
       }
-      if (this.pump) this.pump.position.set(this.pumpHome.x, this.pumpHome.y, this.pumpHome.z + 0.09 * back);
+      if (this.pump) {
+        this.pump.position.set(this.pumpHome.x, this.pumpHome.y, this.pumpHome.z + 0.09 * back);
+        lhZ += 0.09 * back;
+      }
     } else {
       if (this.bolt) this.bolt.position.copy(this.boltHome);
       if (this.pump) this.pump.position.copy(this.pumpHome);
     }
+
+    if (this.lhand) this.lhand.position.set(this.lhandHome.x + lhX, this.lhandHome.y + lhY, this.lhandHome.z + lhZ);
+    if (this.rhand) this.rhand.position.set(this.rhandHome.x, this.rhandHome.y + rhY, this.rhandHome.z + rhZ);
 
     // El tajo del cuchillo.
     let knifeX = 0;

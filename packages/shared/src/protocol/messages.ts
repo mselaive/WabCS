@@ -129,7 +129,8 @@ export interface MatchStartMsg {
  * --- sólo el propio:
  * 16 ammo0, 17 reserve0, 18 ammo1, 19 reserve1, 20 money, 21 fireCd,
  * 22 reloadCd, 23 drawCd, 24 recoil, 25 vy (cm/s), 26 granadas
- * (he + flash*4 + humo*16), 27 blindTicks, 28 bomba (1 la lleva) + kit (2)
+ * (he + flash*4 + humo*16), 27 blindTicks, 28 bomba (1 la lleva) + kit (2),
+ * 29 tagged (ticks frenado por un tiro)
  */
 export type SnapPlayer = number[];
 

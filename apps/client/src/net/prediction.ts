@@ -132,6 +132,7 @@ export class Predictor {
       s.reserve = [server.own.reserve[0], server.own.reserve[1], 0, 0];
       s.grenades = [server.own.grenades[0], server.own.grenades[1], server.own.grenades[2]];
       s.blindTicks = server.own.blindTicks;
+      s.tagged = server.own.tagged;
       s.money = server.own.money;
       s.fireCd = server.own.fireCd;
       s.reloadCd = server.own.reloadCd;

@@ -63,6 +63,9 @@ export const GRAVITY = 20;
 export const JUMP_SPEED = 7.3;
 /** Caminar (Shift) y agacharse frenan: y caminar no hace ruido. */
 export const WALK_FACTOR = 0.52;
+/** Un tiro recibido frena: estos ticks a esta fracción de la velocidad, recuperando de a poco. */
+export const TAG_TICKS = 8;
+export const TAG_FACTOR = 0.45;
 export const CROUCH_FACTOR = 0.34;
 /** Qué tan rápido se alcanza la velocidad máxima en el piso (1/s) y cuánto frena soltar. */
 export const GROUND_ACCEL = 14;

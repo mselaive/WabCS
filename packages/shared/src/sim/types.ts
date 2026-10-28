@@ -63,6 +63,8 @@ export interface PlayerState {
   grenades: [number, number, number];
   /** Ticks que le quedan ciego por una flash. */
   blindTicks: number;
+  /** Ticks que le quedan frenado por un tiro recibido. */
+  tagged: number;
   /** Lleva la bomba (modo bomba, un T). */
   hasBomb: boolean;
   /** Kit de desactivación (CT). */

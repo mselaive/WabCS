@@ -13,6 +13,8 @@ import {
   PLAYER_HALF_W,
   PLAYER_HEIGHT,
   STEP_HEIGHT,
+  TAG_FACTOR,
+  TAG_TICKS,
   WALK_FACTOR,
 } from "../constants.js";
 import { clamp, forwardXZ, lerp, rightXZ } from "../math.js";
@@ -39,6 +41,8 @@ export function maxSpeedOf(p: PlayerState, input: PlayerInput): number {
   if (p.crouch > 0) v *= CROUCH_FACTOR;
   else if (input.walk) v *= WALK_FACTOR;
   if (p.scoped) v *= 0.6;
+  // Recién baleado: frenado, y se recupera a medida que pasan los ticks.
+  if (p.tagged > 0) v *= 1 - (1 - TAG_FACTOR) * (p.tagged / TAG_TICKS);
   return v;
 }
 
@@ -105,6 +109,7 @@ export function stepPlayerMovement(p: PlayerState, input: PlayerInput, map: Game
   p.yaw = input.yaw;
   p.pitch = clamp(input.pitch, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
   if (!p.alive) return;
+  if (p.tagged > 0) p.tagged--;
 
   const boxes = map.boxes;
 

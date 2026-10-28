@@ -34,6 +34,7 @@ export function createPlayer(id: number, team = TEAM_T): PlayerState {
     active: SLOT_SECONDARY,
     grenades: [0, 0, 0],
     blindTicks: 0,
+    tagged: 0,
     hasBomb: false,
     kit: false,
     fireCd: 0,

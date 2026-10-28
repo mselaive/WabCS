@@ -163,6 +163,16 @@ casi nada) y según dónde pega: **cabeza ×4**, cuerpo ×1, piernas ×0,75. El 
 del daño al cuerpo (y a la cabeza, con casco) y se va gastando; las piernas no tienen chaleco.
 Las fórmulas son las de CS (`applyArmor` en `combat.ts`).
 
+**Paredes finas** (`bulletSegments`): los rifles y la Deagle atraviesan tabiques finos (el AK hasta
+40 cm, el M4 35, el AWP 60, la Deagle 32, la MP5 16; las pistolas chicas, la escopeta y el cuchillo
+no) con el daño reducido a entre la mitad y el 80 % según el grosor. Una sola pared por bala, y un
+cuerpo la frena. Las paredes de las casitas y los garajes son de 30 cm: se puede castigar al que se
+esconde detrás, pero no matarlo de un tiro. El cliente dibuja el trazador y el agujero del otro lado
+con la misma función que usa el servidor para resolver el tiro.
+
+**Frenado** (*tagging*): un tiro recibido te deja 0,4 s a menos de la mitad de la velocidad,
+recuperando de a poco. No se escapa de un duelo a toda carrera: se contesta o se busca pared.
+
 ### Retroceso y dispersión
 
 Para que no sea cuestión de apretar y mantener:

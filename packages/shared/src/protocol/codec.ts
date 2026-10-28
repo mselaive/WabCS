@@ -119,6 +119,7 @@ export function packPlayer(p: PlayerState, own: boolean): SnapPlayer {
       (p.grenades[0] ?? 0) + (p.grenades[1] ?? 0) * 4 + (p.grenades[2] ?? 0) * 16,
       p.blindTicks,
       (p.hasBomb ? 1 : 0) + (p.kit ? 2 : 0),
+      p.tagged,
     );
   }
   return out;
@@ -163,6 +164,7 @@ export interface UnpackedPlayer {
     blindTicks: number;
     hasBomb: boolean;
     kit: boolean;
+    tagged: number;
   } | null;
 }
 
@@ -191,6 +193,7 @@ export function unpackPlayer(t: SnapPlayer): UnpackedPlayer {
           blindTicks: t[SP_OWN + 11] ?? 0,
           hasBomb: ((t[SP_OWN + 12] ?? 0) & 1) !== 0,
           kit: ((t[SP_OWN + 12] ?? 0) & 2) !== 0,
+          tagged: t[SP_OWN + 13] ?? 0,
         }
       : null;
   return {

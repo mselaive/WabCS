@@ -3,6 +3,8 @@ import type { Box } from "./types.js";
 export interface RayHit {
   /** Distancia a lo largo del rayo. */
   t: number;
+  /** Distancia a la que el rayo sale de la caja (para saber cuánto grosor atraviesa). */
+  exit: number;
   /** Normal de la cara que se pegó (-1, 0 o 1 en un solo eje). */
   nx: number;
   ny: number;
@@ -60,6 +62,7 @@ export function rayBox(
 
   if (out) {
     out.t = tmin;
+    out.exit = tmax;
     out.nx = axis === 0 ? sign : 0;
     out.ny = axis === 1 ? sign : 0;
     out.nz = axis === 2 ? sign : 0;
@@ -74,7 +77,7 @@ export function raycastBoxes(
   boxes: readonly Box[], maxT: number, out?: RayHit,
 ): number {
   let best = -1;
-  const scratch: RayHit = { t: 0, nx: 0, ny: 0, nz: 0 };
+  const scratch: RayHit = { t: 0, exit: 0, nx: 0, ny: 0, nz: 0 };
   for (const b of boxes) {
     if (b.decal) continue;
     const t = rayBox(ox, oy, oz, dx, dy, dz, b, best < 0 ? maxT : best, scratch);
@@ -82,6 +85,7 @@ export function raycastBoxes(
       best = t;
       if (out) {
         out.t = scratch.t;
+        out.exit = scratch.exit;
         out.nx = scratch.nx;
         out.ny = scratch.ny;
         out.nz = scratch.nz;
