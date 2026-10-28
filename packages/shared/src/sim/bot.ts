@@ -1,9 +1,11 @@
 import {
   ACT_BUY_BASE,
+  ACT_GRENADE_BASE,
   ACT_NONE,
   ACT_SLOT_0,
   ACT_SLOT_1,
   HEAD_HEIGHT,
+  ROUND_TICKS,
   TEAM_CT,
   TEAM_T,
   TICK_RATE,
@@ -11,8 +13,8 @@ import {
 import { mulberry32, wrapAngle } from "../math.js";
 import { segmentClear } from "../map/raycast.js";
 import type { GameMap } from "../map/types.js";
-import { BUY_ITEMS, SLOT_KNIFE, SLOT_PRIMARY, SLOT_SECONDARY, weapon } from "../weapons.js";
-import { smokeBlocks } from "./grenade.js";
+import { BUY_ITEMS, SLOT_GRENADE, SLOT_KNIFE, SLOT_PRIMARY, SLOT_SECONDARY, weapon } from "../weapons.js";
+import { grenadeLanding, smokeBlocks } from "./grenade.js";
 import { eyeHeightOf, heightOf } from "./movement.js";
 import { findPath, navGridFor, randomWalkableIn } from "./nav.js";
 import type { GameState, PlayerInput, PlayerState, SmokeState } from "./types.js";
@@ -68,6 +70,8 @@ export interface BotMemory {
   lastZ: number;
   crouchUntil: number;
   seq: number;
+  nade: NadePlan | null;
+  nadeCheckAt: number;
 }
 
 export function createBotMemory(seed: number, skill: number): BotMemory {
@@ -96,6 +100,8 @@ export function createBotMemory(seed: number, skill: number): BotMemory {
     lastZ: 0,
     crouchUntil: 0,
     seq: 1,
+    nade: null,
+    nadeCheckAt: 0,
   };
 }
 
@@ -143,7 +149,59 @@ function shopping(me: PlayerState, rng: () => number): number {
     if (me.money >= 650) return idx("kevlar");
   }
   if (!has(SLOT_PRIMARY) && me.slots[SLOT_SECONDARY] !== 3 && me.money >= 700 + 650) return idx("deagle");
+  // Con lo importante comprado, granadas: una flash, una HE, y a veces un humo.
+  if (has(SLOT_PRIMARY) && me.armor > 0) {
+    if ((me.grenades[1] ?? 0) < 1 && me.money >= 200 + 1200) return idx("flash");
+    if ((me.grenades[0] ?? 0) < 1 && me.money >= 300 + 1500) return idx("he");
+    if ((me.grenades[2] ?? 0) < 1 && me.money >= 300 + 2200 && rng() < 0.5) return idx("smoke");
+  }
   return -1;
+}
+
+/** Un plan de tirar una granada: sacarla, apuntar, y soltarla. */
+interface NadePlan {
+  kind: number;
+  yaw: number;
+  pitch: number;
+  /** Tick en que se suelta. */
+  throwAt: number;
+  equipped: boolean;
+}
+
+/**
+ * ¿Vale la pena tirar algo ahora? Una HE al último lugar donde vio al otro
+ * (si la simulación dice que cae cerca de él y lejos de mí), una flash antes
+ * de ir a buscarlo, un humo al salir del spawn.
+ */
+function planNade(state: GameState, me: PlayerState, mem: BotMemory, map: GameMap, tick: number): NadePlan | null {
+  const rng = mem.rng;
+  const canThrow = (kind: number) => (me.grenades[kind] ?? 0) > 0;
+  const hunting = mem.lastKnown !== null && tick - mem.seenAt < 8 * TICK_RATE && tick - mem.seenAt > TICK_RATE;
+  if (hunting && mem.lastKnown) {
+    const lk = mem.lastKnown;
+    const dist = Math.hypot(lk.x - me.x, lk.z - me.z);
+    const yaw = Math.atan2(-(lk.x - me.x), -(lk.z - me.z));
+    if (canThrow(0) && dist > 5 && dist < 22) {
+      // Probar tres alturas de tiro: la que cae más cerca de él.
+      let best: { pitch: number; d: number } | null = null;
+      for (const pitch of [0.1, 0.35, 0.6]) {
+        const land = grenadeLanding(me, 0, yaw, pitch, map.boxes);
+        const d = Math.hypot(land.x - lk.x, land.z - lk.z);
+        const self = Math.hypot(land.x - me.x, land.z - me.z);
+        if (self > 5 && (!best || d < best.d)) best = { pitch, d };
+      }
+      if (best && best.d < 3.5) return { kind: 0, yaw, pitch: best.pitch, throwAt: tick + 12, equipped: false };
+    }
+    if (canThrow(1) && dist > 6 && dist < 20 && rng() < 0.6) {
+      return { kind: 1, yaw, pitch: 0.55, throwAt: tick + 12, equipped: false };
+    }
+  }
+  // Al salir: un humo hacia el mid, para cruzar.
+  if (canThrow(2) && state.round.phase === "live" && ROUND_TICKS - state.round.ticksLeft > 2 * TICK_RATE && ROUND_TICKS - state.round.ticksLeft < 6 * TICK_RATE) {
+    const yaw = Math.atan2(-(0 - me.x), -(0 - me.z));
+    return { kind: 2, yaw, pitch: 0.4, throwAt: tick + 12, equipped: false };
+  }
+  return null;
 }
 
 /**
@@ -199,6 +257,37 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
     mem.lastKnown = { x: target.x, y: target.y, z: target.z };
   } else if (tick - mem.seenAt > 2) {
     mem.target = -1;
+  }
+
+  // ---- Una granada: con alguien a la vista se cancela; si no, se saca, se apunta y se suelta.
+  if (target) {
+    if (mem.nade) {
+      mem.nade = null;
+      if ((me.slots[SLOT_PRIMARY] ?? -1) >= 0) input.act = ACT_SLOT_0;
+    }
+  } else {
+    if (!mem.nade && tick >= mem.nadeCheckAt) {
+      mem.nadeCheckAt = tick + 15;
+      mem.nade = planNade(state, me, mem, map, tick);
+    }
+    if (mem.nade) {
+      const plan = mem.nade;
+      mem.yaw = wrapAngle(mem.yaw + wrapAngle(plan.yaw - mem.yaw) * 0.5);
+      mem.pitch += (plan.pitch - mem.pitch) * 0.5;
+      input.yaw = Math.round(mem.yaw * 1000) / 1000;
+      input.pitch = Math.round(mem.pitch * 1000) / 1000;
+      if (!plan.equipped) {
+        input.act = ACT_GRENADE_BASE + plan.kind;
+        plan.equipped = true;
+      } else if (tick >= plan.throwAt && me.active === SLOT_GRENADE && me.drawCd === 0) {
+        input.shoot = true;
+        mem.nade = null;
+      } else if (tick > plan.throwAt + 20) {
+        // No la pudo sacar (no tiene, o cambió de idea): a otra cosa.
+        mem.nade = null;
+      }
+      return input;
+    }
   }
 
   // ---- Apuntar: hacia el blanco (con error que va variando) o hacia donde camina.

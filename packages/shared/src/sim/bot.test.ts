@@ -118,6 +118,39 @@ describe("el bot", () => {
     void USP;
   });
 
+  it("con plata compra granadas, y tira una HE a donde vio al otro", () => {
+    const { state, bot, human, mem, events } = match();
+    bot.money = 16000;
+    // Compra todo lo que quiera en el tiempo de compra.
+    for (let i = 0; i < FREEZE_TICKS; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+    expect(bot.slots[0]).toBe(AK47);
+    expect(bot.armor).toBe(100);
+    expect(bot.grenades[0]).toBe(1);
+    expect(bot.grenades[1]).toBe(1);
+    // Lo vio hace poco detrás de los sacos de arena de su propio spawn, a 8 m, y ya no lo ve.
+    bot.x = 0;
+    bot.z = 14;
+    mem.yaw = 0;
+    human.x = 0;
+    human.z = 5.3;
+    human.y = 0;
+    mem.lastKnown = { x: 0, y: 0, z: 5.3 };
+    mem.seenAt = state.tick - 30;
+    // Que no lo vea de verdad: lo escondemos del todo (otro lado del mapa) pero el recuerdo queda.
+    human.x = 15;
+    human.z = -12;
+    const before = bot.grenades[0] + bot.grenades[1] + bot.grenades[2];
+    let threw = false;
+    for (let i = 0; i < 80 && !threw; i++) {
+      const input = botInput(state, bot, mem, BODEGA);
+      step(state, new Map([[1, [input]]]), events, BODEGA);
+      threw = events.some((e) => e.t === "throw" && e.byId === 1);
+    }
+    expect(threw).toBe(true);
+    expect(bot.grenades[0] + bot.grenades[1] + bot.grenades[2]).toBe(before - 1);
+    expect(state.grenades.length + state.smokes.length).toBeGreaterThan(0);
+  });
+
   it("no dispara a través de la pared de la casita", () => {
     const { state, bot, human, mem, events } = match();
     for (let i = 0; i < FREEZE_TICKS; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);

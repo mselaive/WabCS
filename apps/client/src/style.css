@@ -330,6 +330,16 @@ body {
   color: var(--ct);
 }
 
+.minimap {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #1a1f26;
+  opacity: 0.9;
+}
+
 .killfeed {
   position: absolute;
   top: 14px;

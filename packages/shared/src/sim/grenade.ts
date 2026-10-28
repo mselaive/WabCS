@@ -34,9 +34,18 @@ export const GRENADE_SMOKE = 2;
  * predecir igual que una bala.
  */
 export function throwGrenade(state: GameState, p: PlayerState, kind: number, events: SimEvent[], seq: number): GrenadeState {
-  const dir = viewDir(p.yaw, p.pitch + 0.12, { x: 0, y: 0, z: 0 });
-  const g: GrenadeState = {
-    id: state.nextGrenadeId++,
+  const g = launchGrenade(p, kind, p.yaw, p.pitch);
+  g.id = state.nextGrenadeId++;
+  state.grenades.push(g);
+  events.push({ t: "throw", byId: p.id, seq, kind, id: g.id });
+  return g;
+}
+
+/** La granada recién salida de la mano, mirando a (yaw, pitch), sin meterla en el estado (para simular tiros). */
+export function launchGrenade(p: PlayerState, kind: number, yaw: number, pitch: number): GrenadeState {
+  const dir = viewDir(yaw, pitch + 0.12, { x: 0, y: 0, z: 0 });
+  return {
+    id: 0,
     kind,
     ownerId: p.id,
     team: p.team,
@@ -48,9 +57,13 @@ export function throwGrenade(state: GameState, p: PlayerState, kind: number, eve
     vz: dir.z * GRENADE_THROW_SPEED + p.vz * 0.5,
     ticksLeft: kind === GRENADE_SMOKE ? SMOKE_FUSE_TICKS : GRENADE_FUSE_TICKS,
   };
-  state.grenades.push(g);
-  events.push({ t: "throw", byId: p.id, seq, kind, id: g.id });
-  return g;
+}
+
+/** Dónde va a estallar una granada tirada así: se simula el vuelo entero. */
+export function grenadeLanding(p: PlayerState, kind: number, yaw: number, pitch: number, boxes: readonly Box[]): { x: number; y: number; z: number } {
+  const g = launchGrenade(p, kind, yaw, pitch);
+  for (let i = 0; i < g.ticksLeft; i++) advanceGrenade(g, boxes);
+  return { x: g.x, y: g.y, z: g.z };
 }
 
 function overlaps(b: Box, x: number, y: number, z: number, r: number): boolean {

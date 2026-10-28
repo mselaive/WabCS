@@ -57,6 +57,7 @@ import { Net, diagnoseConnection } from "./net/connection.js";
 import { SnapshotBuffer, type InterpolatedFrame } from "./net/interpolation.js";
 import { Predictor, type PredictedShot } from "./net/prediction.js";
 import { Effects } from "./render/effects.js";
+import { Minimap } from "./render/minimap.js";
 import { PlayerAvatar, buildCorpse } from "./render/players.js";
 import { ViewModel, muzzleOffset } from "./render/viewmodel.js";
 import { World } from "./render/world.js";
@@ -73,6 +74,7 @@ export class Game {
   private readonly world = new World();
   private effects!: Effects;
   private viewModel!: ViewModel;
+  private minimap!: Minimap;
   private readonly avatars = new Map<number, PlayerAvatar>();
   private readonly avatarGroup = new THREE.Group();
   private readonly corpseGroup = new THREE.Group();
@@ -146,6 +148,8 @@ export class Game {
     this.viewModel.setHidden(true);
     this.world.setEnvironment(this.renderer);
     this.world.load(this.map);
+    this.minimap = new Minimap(document.getElementById("minimap") as HTMLCanvasElement);
+    this.minimap.load(this.map);
     this.lobbyCamera();
 
     this.input.attach(this.stage);
@@ -353,6 +357,7 @@ export class Game {
     if (next === this.map && this.world.scene.children.length > 0) return;
     this.map = next;
     this.world.load(this.map);
+    this.minimap.load(this.map);
   }
 
   private beginMatch(): void {
@@ -697,6 +702,14 @@ export class Game {
       this.world.updateGrenades(frame.grenades, dt);
       this.world.updateSmokes(frame.smokes, dt);
       this.updateRoundHud(frame.round);
+      const s = this.predictor?.state;
+      this.minimap.draw(
+        s ? { x: s.x, z: s.z, yaw: this.input.yaw, team: s.team, alive: s.alive } : null,
+        frame.players,
+        frame.grenades,
+        frame.smokes,
+        this.myId,
+      );
     }
 
     const me = this.predictor;
