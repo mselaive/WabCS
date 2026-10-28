@@ -84,6 +84,7 @@ export class Game {
   private hostId = -1;
   private roster: PlayerMeta[] = [];
   private winRounds = 8;
+  private botSkill = 1;
   private phase: MatchPhase = "lobby";
   private readonly buffer = new SnapshotBuffer();
   private predictor: Predictor | null = null;
@@ -237,6 +238,7 @@ export class Game {
 
   disconnect(): void {
     this.leaving = true;
+    this.practiceBots = 0;
     this.net?.close();
     this.net = null;
     this.myId = -1;
@@ -263,6 +265,21 @@ export class Game {
 
   kick(id: number): void {
     this.net?.send({ t: "kick", id });
+  }
+
+  addBot(): void {
+    this.net?.send({ t: "bot" });
+  }
+
+  private practiceBots = 0;
+
+  /** Al entrar a la sala (si soy el host), agregar bots y marcar listo: arranca sola. */
+  practiceOnJoin(bots: number): void {
+    this.practiceBots = bots;
+  }
+
+  setBotSkill(skill: number): void {
+    this.net?.send({ t: "botSkill", skill });
   }
 
   setTeam(team: number): void {
@@ -294,15 +311,21 @@ export class Game {
         this.winRounds = msg.winRounds;
         this.loadMap(msg.map);
         this.ui.setRoom(msg.room);
-        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds);
+        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill);
         if (msg.phase === "lobby") this.ui.showScreen("lobby");
         document.getElementById("reconnecting")!.hidden = true;
+        if (this.practiceBots > 0 && this.hostId === this.myId && msg.phase === "lobby") {
+          for (let i = 0; i < this.practiceBots; i++) this.addBot();
+          this.setReady(true);
+        }
+        this.practiceBots = 0;
         return;
       case "roster":
         this.roster = msg.roster;
         this.hostId = msg.hostId;
         this.winRounds = msg.winRounds;
-        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, msg.nextIn);
+        this.botSkill = msg.botSkill;
+        this.ui.updateLobby(this.roster, this.hostId, this.myId, this.winRounds, this.botSkill, msg.nextIn);
         return;
       case "start":
         this.loadMap(msg.map);

@@ -10,5 +10,7 @@ export * from "./sim/combat.js";
 export * from "./sim/inventory.js";
 export * from "./sim/rounds.js";
 export * from "./sim/step.js";
+export * from "./sim/nav.js";
+export * from "./sim/bot.js";
 export * from "./protocol/messages.js";
 export * from "./protocol/codec.js";

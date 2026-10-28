@@ -66,7 +66,13 @@ export interface ChatMsg {
   text: string;
 }
 
-export type ClientMsg = ReadyMsg | InputMsg | PingMsg | StartMsg | KickMsg | AddBotMsg | TeamMsg | RoundsMsg | ChatMsg;
+/** El host elige la dificultad de los bots (índice en BOT_SKILLS). */
+export interface BotSkillMsg {
+  t: "botSkill";
+  skill: number;
+}
+
+export type ClientMsg = ReadyMsg | InputMsg | PingMsg | StartMsg | KickMsg | AddBotMsg | TeamMsg | RoundsMsg | ChatMsg | BotSkillMsg;
 
 // ------------------------------------------------------------ servidor -> cliente
 
@@ -87,6 +93,8 @@ export interface RosterMsg {
   hostId: number;
   winRounds: number;
   map: number;
+  /** Dificultad de los bots de la sala. */
+  botSkill: number;
   /** Milisegundos hasta que la próxima partida arranque sola. */
   nextIn?: number;
 }

@@ -1,6 +1,7 @@
 import { Server, type Connection, type ConnectionContext, type WSMessage } from "partyserver";
 import {
   ACT_BUY_BASE,
+  BOT_SKILLS,
   BTN_CROUCH,
   BTN_JUMP,
   BTN_RELOAD,
@@ -20,6 +21,9 @@ import {
   TEAM_CT,
   TEAM_T,
   WIN_ROUNDS_OPTIONS,
+  botAlert,
+  botInput,
+  createBotMemory,
   createGameState,
   createPlayer,
   decodeClient,
@@ -28,6 +32,7 @@ import {
   findPlayer,
   heightOf,
   mapByIndex,
+  navGridFor,
   packDrop,
   packPlayer,
   packRound,
@@ -40,6 +45,7 @@ import {
   startMatch,
   step,
   unpackAngle,
+  type BotMemory,
   type ClientMsg,
   type GameState,
   type PlayerInput,
@@ -70,7 +76,12 @@ interface Seat {
   meta: PlayerMeta;
   inputs: InputQueue;
   lastChatAt: number;
+  /** Si es un bot, lo que recuerda entre ticks. Los bots no tienen conexión. */
+  bot: BotMemory | null;
 }
+
+/** Nombres para los bots: cortos, para que entren en la tabla. */
+const BOT_NAMES = ["Bot Pancho", "Bot Lola", "Bot Toto", "Bot Chela", "Bot Nacho", "Bot Pepa", "Bot Lucho", "Bot Cata", "Bot Tito", "Bot Maru"];
 
 /** Cada cuánto se le da una oportunidad de correr al loop (no es el ritmo del tick). */
 const PUMP_INTERVAL_MS = 10;
@@ -115,6 +126,8 @@ export class GameRoom extends Server<Env> {
   private mapIndex = 0;
   private map = mapByIndex(0);
   private lastStepsTick = 0;
+  /** Dificultad de los bots de la sala (índice en BOT_SKILLS). */
+  private botSkill = 1;
 
   // ------------------------------------------------------------ conexiones
 
@@ -159,6 +172,7 @@ export class GameRoom extends Server<Env> {
       meta: { id: playerId, name, team, ready: false },
       inputs: new InputQueue(),
       lastChatAt: 0,
+      bot: null,
     };
     this.seats.set(playerId, seat);
     if (token !== null) this.byToken.set(token, playerId);
@@ -224,7 +238,7 @@ export class GameRoom extends Server<Env> {
     seat.goneAt = Date.now();
     seat.meta.away = true;
     if (this.hostId === playerId) {
-      const next = [...this.seats.values()].find((s) => s.connId !== null);
+      const next = [...this.seats.values()].find((s) => !s.bot && s.connId !== null);
       if (next) this.hostId = next.playerId;
     }
     this.broadcastRoster();
@@ -333,7 +347,8 @@ export class GameRoom extends Server<Env> {
         if (typeof msg.id !== "number" || msg.id === this.hostId) return;
         const target = this.seats.get(msg.id);
         if (!target) return;
-        this.kicked.add(target.meta.name.trim().toLowerCase());
+        // A un bot no hace falta bloquearlo: no vuelve solo.
+        if (!target.bot) this.kicked.add(target.meta.name.trim().toLowerCase());
         for (const c of this.getConnections<ConnState>()) {
           if (c.state?.playerId !== msg.id) continue;
           this.sendTo(c, { t: "err", code: "kicked", message: "El host te sacó de la sala." });
@@ -344,7 +359,20 @@ export class GameRoom extends Server<Env> {
       }
 
       case "bot": {
-        // Los bots no están todavía: ver IDEAS.md.
+        // Sólo el host, sólo en el lobby y si hay lugar.
+        if (seat.playerId !== this.hostId) return;
+        if (this.state.phase !== "lobby") return;
+        if (this.seats.size >= MAX_PLAYERS) return;
+        this.addBot();
+        return;
+      }
+
+      case "botSkill": {
+        if (seat.playerId !== this.hostId) return;
+        if (typeof msg.skill !== "number" || !Number.isInteger(msg.skill) || msg.skill < 0 || msg.skill >= BOT_SKILLS.length) return;
+        this.botSkill = msg.skill;
+        for (const s of this.seats.values()) if (s.bot) s.bot.skill = msg.skill;
+        this.broadcastRoster();
         return;
       }
 
@@ -438,8 +466,10 @@ export class GameRoom extends Server<Env> {
   private tick(): boolean {
     const s = this.state;
 
-    if (this.seats.size === 0) {
+    if (!this.hasHumans()) {
+      // Sala vacía, o con bots solos, que no miran nadie: apagar el loop.
       if (++this.emptyTicks > EMPTY_ROOM_SHUTDOWN_TICKS) {
+        for (const seat of [...this.seats.values()]) if (seat.bot) this.removeSeat(seat.playerId);
         this.stopLoop();
         this.resetToLobby();
         return false;
@@ -461,19 +491,29 @@ export class GameRoom extends Server<Env> {
 
     const inputs = new Map<number, PlayerInput[]>();
     for (const seat of this.seats.values()) {
+      if (seat.bot) {
+        // Los bots deciden con el estado de este mismo tick, como si su input
+        // acabara de llegar.
+        const me = findPlayer(s, seat.playerId);
+        inputs.set(seat.playerId, me?.alive && s.phase === "playing" ? [botInput(s, me, seat.bot, this.map)] : []);
+        continue;
+      }
       if (seat.goneAt > 0) continue;
       inputs.set(seat.playerId, seat.inputs.take());
     }
 
     const wasPlaying = s.phase === "playing";
+    const before = this.events.length;
     step(s, inputs, this.events, this.map);
+    this.alertBots(this.events.slice(before));
     if (wasPlaying && s.phase === "ended") this.addToTally();
 
     if (s.phase === "countdown" && s.phaseTicksLeft <= 0) {
-      // Los equipos del lobby son los del partido.
+      // Los equipos del lobby son los del partido. Los bots arrancan de cero.
       for (const seat of this.seats.values()) {
         const p = findPlayer(s, seat.playerId);
         if (p) p.team = seat.meta.team;
+        if (seat.bot) seat.bot = createBotMemory((Date.now() ^ (seat.playerId * 7919)) | 0, seat.bot.skill);
       }
       startMatch(s, (Date.now() ^ (this.seats.size << 16)) | 1, this.map, this.winRounds, this.events);
       this.broadcast(encodeServer({ t: "start", seed: s.seed, map: this.mapIndex }));
@@ -482,6 +522,30 @@ export class GameRoom extends Server<Env> {
     }
 
     return true;
+  }
+
+  /**
+   * Lo que un bot oye: si le pegaron, sabe de dónde vino; un tiro cerca le
+   * dice por dónde anda el otro. Es lo mismo que oye un jugador.
+   */
+  private alertBots(events: readonly SimEvent[]): void {
+    const s = this.state;
+    for (const e of events) {
+      if (e.t === "hit") {
+        const seat = this.seats.get(e.targetId);
+        const by = findPlayer(s, e.byId);
+        if (seat?.bot && by) botAlert(seat.bot, by.x, by.y, by.z, s.tick);
+      } else if (e.t === "shot") {
+        const shooter = findPlayer(s, e.byId);
+        if (!shooter) continue;
+        for (const seat of this.seats.values()) {
+          if (!seat.bot) continue;
+          const me = findPlayer(s, seat.playerId);
+          if (!me?.alive || me.team === shooter.team) continue;
+          if (Math.hypot(e.x - me.x, e.z - me.z) <= 22) botAlert(seat.bot, shooter.x, shooter.y, shooter.z, s.tick);
+        }
+      }
+    }
   }
 
   // ------------------------------------------------------------ visibilidad
@@ -682,7 +746,8 @@ export class GameRoom extends Server<Env> {
     for (const seat of this.seats.values()) {
       const p = findPlayer(s, seat.playerId);
       if (p) seat.meta.team = p.team;
-      seat.meta.ready = played && seat.goneAt === 0;
+      // Los bots, siempre listos.
+      seat.meta.ready = seat.bot !== null || (played && seat.goneAt === 0);
       seat.inputs.clear();
     }
     this.nextMatchAt = played ? Date.now() + NEXT_MATCH_MS : 0;
@@ -705,10 +770,39 @@ export class GameRoom extends Server<Env> {
     }
 
     if (this.hostId === playerId) {
-      const next = this.seats.values().next().value;
+      // El puesto pasa a otra persona, nunca a un bot.
+      const next = [...this.seats.values()].find((s) => !s.bot);
       this.hostId = next ? next.playerId : -1;
     }
     this.broadcastRoster();
+  }
+
+  private hasHumans(): boolean {
+    for (const seat of this.seats.values()) if (!seat.bot) return true;
+    return false;
+  }
+
+  /** Un bot más en la sala, en el equipo con menos gente, ya listo. */
+  private addBot(): void {
+    // La grilla de caminos se arma una vez por mapa: mejor ahora, en el lobby.
+    navGridFor(this.map);
+    const used = new Set([...this.seats.values()].map((s) => s.meta.name));
+    const name = BOT_NAMES.find((n) => !used.has(n)) ?? `Bot ${this.nextPlayerId}`;
+    const playerId = this.nextPlayerId++;
+    const team = smallerTeam(this.state.players);
+    this.seats.set(playerId, {
+      playerId,
+      connId: null,
+      token: null,
+      goneAt: 0,
+      meta: { id: playerId, name, team, ready: true, bot: true },
+      inputs: new InputQueue(),
+      lastChatAt: 0,
+      bot: createBotMemory((Date.now() ^ (playerId * 7919)) | 0, this.botSkill),
+    });
+    this.state.players.push(createPlayer(playerId, team));
+    this.broadcastRoster();
+    this.ensureLoop();
   }
 
   private roster(): PlayerMeta[] {
@@ -723,6 +817,7 @@ export class GameRoom extends Server<Env> {
         hostId: this.hostId,
         winRounds: this.winRounds,
         map: this.mapIndex,
+        botSkill: this.botSkill,
         ...(this.nextMatchAt > Date.now() ? { nextIn: this.nextMatchAt - Date.now() } : {}),
       }),
     );

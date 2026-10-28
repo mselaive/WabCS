@@ -1,0 +1,139 @@
+import { describe, expect, it } from "vitest";
+import { BODEGA } from "../map/bodega.js";
+import { ACT_BUY_BASE, FREEZE_TICKS, TEAM_CT, TEAM_T } from "../constants.js";
+import { wrapAngle } from "../math.js";
+import { AK47, BUY_ITEMS, USP } from "../weapons.js";
+import { botInput, createBotMemory } from "./bot.js";
+import { findPath, navGridFor, walkable, cellOf } from "./nav.js";
+import { startMatch } from "./rounds.js";
+import { createGameState, createPlayer, step } from "./step.js";
+import type { PlayerInput, SimEvent } from "./types.js";
+
+describe("la grilla de caminos", () => {
+  const grid = navGridFor(BODEGA);
+
+  it("sabe por dónde se camina: spawns sí, paredes no", () => {
+    expect(walkable(grid, ...cellOf(grid, 0, 12.5))).toBe(true);
+    expect(walkable(grid, ...cellOf(grid, 0, -12.5))).toBe(true);
+    // Adentro de la pared de la casita del mid.
+    expect(walkable(grid, ...cellOf(grid, -3, 3.75))).toBe(false);
+    // Adentro del garaje se camina por el piso; el techo queda afuera (demasiado alto).
+    const [gc, gr] = cellOf(grid, -17, 4.5);
+    expect(walkable(grid, gc, gr)).toBe(true);
+    expect(grid.floor[gr * grid.cols + gc]).toBe(0);
+    // Arriba de la plataforma de la derecha (0,8 m) sí se puede estar.
+    const [pc, pr] = cellOf(grid, 20, 2.5);
+    expect(grid.floor[pr * grid.cols + pc]).toBeCloseTo(0.8, 2);
+  });
+
+  it("encuentra el camino de un spawn al otro y por los dos lados", () => {
+    const path = findPath(grid, 0, 12.5, 0, -12.5);
+    expect(path).not.toBeNull();
+    expect(path!.length).toBeGreaterThan(3);
+    for (const p of path!) expect(walkable(grid, ...cellOf(grid, p.x, p.z))).toBe(true);
+    const last = path![path!.length - 1]!;
+    expect(Math.hypot(last.x - 0, last.z + 12.5)).toBeLessThan(0.8);
+    // Al garaje por adentro, y a la plataforma de la derecha.
+    expect(findPath(grid, 0, 12.5, -16, 4.5)).not.toBeNull();
+    expect(findPath(grid, 0, 12.5, 20, 2.5)).not.toBeNull();
+  });
+
+  it("no cruza paredes: cada tramo del camino está libre", () => {
+    const path = findPath(grid, -14, 13, 14, -13)!;
+    let prev = { x: -14, z: 13 };
+    for (const p of path) {
+      // Cada paso es corto (celdas vecinas, simplificadas en rectas): no salta nada.
+      const steps = Math.ceil(Math.hypot(p.x - prev.x, p.z - prev.z) / 0.25);
+      for (let i = 1; i <= steps; i++) {
+        const x = prev.x + ((p.x - prev.x) * i) / steps;
+        const z = prev.z + ((p.z - prev.z) * i) / steps;
+        expect(walkable(grid, ...cellOf(grid, x, z)), `${x},${z}`).toBe(true);
+      }
+      prev = p;
+    }
+  });
+});
+
+describe("el bot", () => {
+  function match() {
+    const state = createGameState();
+    const bot = createPlayer(1, TEAM_T);
+    const human = createPlayer(2, TEAM_CT);
+    state.players.push(bot, human);
+    const events: SimEvent[] = [];
+    startMatch(state, 7, BODEGA, 8, events);
+    const mem = createBotMemory(42, 1);
+    return { state, bot, human, events, mem };
+  }
+
+  it("compra un rifle en el tiempo de compra si tiene plata", () => {
+    const { state, bot, mem } = match();
+    bot.money = 4000;
+    const input = botInput(state, bot, mem, BODEGA);
+    expect(input.act).toBe(ACT_BUY_BASE + BUY_ITEMS.findIndex((b) => b.key === "ak"));
+    const inputs = new Map([[1, [input]]]);
+    const events: SimEvent[] = [];
+    step(state, inputs, events, BODEGA);
+    expect(bot.slots[0]).toBe(AK47);
+  });
+
+  it("sale del spawn y avanza hacia el lado rival", () => {
+    const { state, bot, human, mem, events } = match();
+    // El humano, quieto y lejos de la vista: adentro del garaje CT.
+    human.x = 17;
+    human.z = -4.5;
+    for (let i = 0; i < FREEZE_TICKS; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+    const z0 = bot.z;
+    for (let i = 0; i < 8 * 20; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+    expect(bot.z).toBeLessThan(z0 - 4);
+  });
+
+  it("al ver a alguien le apunta y le dispara, con retardo", () => {
+    const { state, bot, human, mem, events } = match();
+    for (let i = 0; i < FREEZE_TICKS; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+    // Los dos en la calle izquierda, cara a cara a 10 m, sin nada en el medio.
+    bot.x = -16;
+    bot.z = 14;
+    mem.yaw = 0;
+    human.x = -16;
+    human.z = 9;
+    // Que aguante los 60 ticks: si lo mata, el bot vuelve a patrullar y gira.
+    human.hp = 100000;
+    let shots = 0;
+    let firstShotTick = -1;
+    const before = human.hp;
+    for (let i = 0; i < 60; i++) {
+      const input = botInput(state, bot, mem, BODEGA);
+      if (input.shoot && firstShotTick < 0) firstShotTick = i;
+      if (input.shoot) shots++;
+      step(state, new Map([[1, [input]]]), events, BODEGA);
+    }
+    expect(shots).toBeGreaterThan(0);
+    // Reaccionó, pero no al instante (normal: 6 a 12 ticks).
+    expect(firstShotTick).toBeGreaterThanOrEqual(5);
+    expect(human.hp).toBeLessThan(before);
+    // Se movió de costado mientras tiraba, pero sigue apuntándole.
+    const toward = Math.atan2(-(human.x - bot.x), -(human.z - bot.z));
+    expect(Math.abs(wrapAngle(mem.yaw - toward))).toBeLessThan(0.25);
+    void USP;
+  });
+
+  it("no dispara a través de la pared de la casita", () => {
+    const { state, bot, human, mem, events } = match();
+    for (let i = 0; i < FREEZE_TICKS; i++) step(state, new Map([[1, [botInput(state, bot, mem, BODEGA)]]]), events, BODEGA);
+    bot.x = -3;
+    bot.z = 6;
+    mem.yaw = 0;
+    human.x = -3;
+    human.z = -6;
+    let shots = 0;
+    for (let i = 0; i < 30; i++) {
+      const input = botInput(state, bot, mem, BODEGA);
+      if (input.shoot) shots++;
+      step(state, new Map([[1, [input]]]), events, BODEGA);
+    }
+    expect(shots).toBe(0);
+  });
+});
+
+export type { PlayerInput };

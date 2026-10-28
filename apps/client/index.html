@@ -80,7 +80,7 @@
     <div id="overlay">
       <section id="screenMenu" class="screen">
         <h1 class="logo">Wab<span>CS</span></h1>
-        <p class="tagline">Shooter por rondas para 1v1 y 2v2. Comprá, entrá y eliminá al otro equipo.</p>
+        <p class="tagline">Shooter por rondas para 1v1 y 2v2. Comprá, entrá y eliminá al otro equipo. Solo, con bots.</p>
 
         <p id="inviteHint" class="invite-hint" hidden></p>
 
@@ -105,6 +105,7 @@
             <input id="codeInput" class="code-input" maxlength="6" placeholder="CÓDIGO" autocomplete="off" spellcheck="false" />
             <button id="btnJoin" class="btn">Unirse</button>
           </div>
+          <button id="btnPractice" class="btn btn-ghost btn-small" type="button" title="Una sala propia, 2v2 con tres bots, que arranca sola">Practicar con bots</button>
         </div>
 
         <p id="menuError" class="error" hidden></p>
@@ -158,9 +159,17 @@
           <button class="mode-btn" type="button" role="radio" data-rounds="13">13</button>
         </div>
 
+        <div id="botSkillRow" class="mode-row" role="radiogroup" aria-label="Bots" hidden>
+          <span class="mode-label">Bots</span>
+          <button class="mode-btn" type="button" role="radio" data-skill="0">Fácil</button>
+          <button class="mode-btn" type="button" role="radio" data-skill="1">Normal</button>
+          <button class="mode-btn" type="button" role="radio" data-skill="2">Difícil</button>
+        </div>
+
         <div class="lobby-actions">
           <button id="btnReady" class="btn btn-primary">Estoy listo</button>
           <button id="btnStart" class="btn" hidden>Empezar ya</button>
+          <button id="btnAddBot" class="btn" hidden title="Un bot más, en el equipo con menos gente">Agregar bot</button>
           <button id="btnLeave" class="btn btn-ghost">Salir</button>
         </div>
         <p id="lobbyHint" class="hint"></p>

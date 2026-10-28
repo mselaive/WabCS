@@ -13,10 +13,13 @@ export type Screen = "menu" | "lobby" | "result" | "connecting";
 
 export interface UICallbacks {
   onCreate: (name: string) => void;
+  onPractice: (name: string) => void;
   onJoin: (name: string, code: string) => void;
   onReady: (ready: boolean) => void;
   onStart: () => void;
   onKick: (id: number) => void;
+  onAddBot: () => void;
+  onBotSkill: (skill: number) => void;
   onTeam: (team: number) => void;
   onRounds: (win: number) => void;
   onChat: (text: string) => void;
@@ -119,6 +122,7 @@ export class UI {
     applySens();
 
     $("btnCreate").addEventListener("click", () => cb.onCreate(this.name()));
+    $("btnPractice").addEventListener("click", () => cb.onPractice(this.name()));
     $("btnJoin").addEventListener("click", () => cb.onJoin(this.name(), this.codeInput.value));
     this.codeInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") cb.onJoin(this.name(), this.codeInput.value);
@@ -138,6 +142,10 @@ export class UI {
 
     for (const btn of $("roundsRow").querySelectorAll<HTMLButtonElement>("[data-rounds]")) {
       btn.addEventListener("click", () => cb.onRounds(Number(btn.dataset.rounds)));
+    }
+    $("btnAddBot").addEventListener("click", () => cb.onAddBot());
+    for (const btn of $("botSkillRow").querySelectorAll<HTMLButtonElement>("[data-skill]")) {
+      btn.addEventListener("click", () => cb.onBotSkill(Number(btn.dataset.skill)));
     }
 
     this.roomCode.addEventListener("click", () => {
@@ -225,7 +233,7 @@ export class UI {
     this.roomCode.textContent = code;
   }
 
-  updateLobby(roster: PlayerMeta[], hostId: number, myId: number, winRounds: number, nextIn?: number): void {
+  updateLobby(roster: PlayerMeta[], hostId: number, myId: number, winRounds: number, botSkill = 1, nextIn?: number): void {
     this.roster = roster;
     this.myId = myId;
     const me = roster.find((p) => p.id === myId);
@@ -245,6 +253,12 @@ export class UI {
         name.className = "name";
         name.textContent = `${p.id === hostId ? "★ " : ""}${p.name}${p.id === myId ? " (vos)" : ""}`;
         li.append(name);
+        if (p.bot) {
+          const chip = document.createElement("span");
+          chip.className = "tally";
+          chip.textContent = "BOT";
+          li.append(chip);
+        }
         if (p.played) {
           const tally = document.createElement("span");
           tally.className = "tally";
@@ -288,6 +302,14 @@ export class UI {
     const canStart = t > 0 && ct > 0;
     this.btnStart.hidden = !isHost;
     this.btnStart.disabled = !canStart;
+    $("btnAddBot").hidden = !isHost;
+    const hasBots = roster.some((p) => p.bot);
+    const skillRow = $("botSkillRow");
+    skillRow.hidden = !hasBots;
+    for (const btn of skillRow.querySelectorAll<HTMLButtonElement>("[data-skill]")) {
+      btn.setAttribute("aria-checked", String(Number(btn.dataset.skill) === botSkill));
+      btn.disabled = !isHost;
+    }
     this.lobbyHint.textContent = !canStart
       ? "Hace falta al menos uno en cada equipo."
       : isHost

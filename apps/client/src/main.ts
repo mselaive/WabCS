@@ -15,6 +15,11 @@ function enterRoom(code: string, name: string): void {
 
 const ui = new UI({
   onCreate: (name) => enterRoom(generateRoomCode(), name),
+  // Una sala propia con tres bots (2v2), que arranca sola: para probar o practicar.
+  onPractice: (name) => {
+    enterRoom(generateRoomCode(), name);
+    game.practiceOnJoin(3);
+  },
   onJoin: (name, code) => {
     const normalized = normalizeRoomCode(code);
     if (!normalized) {
@@ -26,6 +31,8 @@ const ui = new UI({
   onReady: (ready) => game.setReady(ready),
   onStart: () => game.requestStart(),
   onKick: (id) => game.kick(id),
+  onAddBot: () => game.addBot(),
+  onBotSkill: (skill) => game.setBotSkill(skill),
   onTeam: (team) => game.setTeam(team),
   onRounds: (win) => game.setRounds(win),
   onChat: (text) => game.chat(text),

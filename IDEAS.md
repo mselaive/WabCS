@@ -17,12 +17,21 @@ Lo que hay, lo que quedó en la lista y por qué. Primera versión: 28 de octubr
 | Sonido | Generado por código: tiros por arma, recarga, pasos, hitmarker, rondas | **No lo escuché**: el navegador de prueba no tiene salida. Probalo |
 | Reconexión | 15 s de gracia en partida; recargar la página vuelve al asiento | Revisado, sin probar a mano |
 
+## Segunda pasada (la misma noche)
+
+| Qué | Detalle | Cómo se probó |
+|---|---|---|
+| Bodega rediseñada | Garajes con techo accesible por escalera y parapeto, contenedores, barriles, sacos, pilares, calles de asfalto | Test de simetría, spawns y rutas + capturas |
+| Armas rehechas | Cilindros, cargadores, miras, culatas, manos; animaciones de sacar, recargar, corredera, cerrojo, bomba, cuchillo; vainas | Capturas |
+| Impactos predichos | Sangre y hitmarker en el mismo input; el servidor no repite el marcador | Navegador contra un bot manso |
+| Bots del servidor | A* sobre grilla, compran, patrullan por lado, cazan, reaccionan con retardo, ráfagas, estrafean, tres dificultades | 7 tests + `scripts/server-bots.mjs` |
+| Practicar con bots | Sala propia 2v2 con tres bots que arranca sola | Navegador |
+| Mira dinámica, pasos, aterrizaje | La mira se abre con la imprecisión real; pasos propios; golpe al caer | Navegador |
+
 ## Lo que falta, en orden
 
-1. **Bots del servidor.** Hoy el único bot es el script headless (`scripts/bot.mjs`), que camina
-   derecho y tira sin pensar. Para practicar solo hace falta un bot adentro del Durable Object como
-   en WabBR: una grilla de caminos (A* sobre las cajas), que compre, que se cubra, con tiempo de
-   reacción y error de puntería por dificultad. La estructura ya está (`Seat.bot` en WabBR).
+1. **Bots que suban a los techos.** La grilla ignora lo que está a más de un metro: los bots no
+   usan los puestos de francotirador ni te buscan ahí. Haría falta una grilla por nivel.
 2. **Granadas.** HE, flash y humo. La física de la granada rebotando contra cajas es la misma
    colisión que el jugador. El humo necesita que la visibilidad del servidor lo respete.
 3. **Modo bomba.** Plantar en A o B, desactivar, 40 s de mecha. Es una máquina de estados más

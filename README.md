@@ -26,15 +26,40 @@ npm run dev          # levanta el servidor (:8787) y el cliente (:5173) a la vez
 Abrí <http://localhost:5173>, creá una sala, copiá el link y abrilo en otra pestaña (o pasáselo a
 alguien en tu red). Con uno en cada equipo y todos listos arranca el partido.
 
-Para probar solo, sin segunda pestaña:
+Para jugar solo, **Practicar con bots** en el menú arma una sala propia con tres bots (2v2) que
+arranca sola. En cualquier sala, el host puede **agregar bots** desde el lobby y elegirles la
+dificultad.
+
+### Bots
+
+Viven en el servidor, dentro de la sala (`sim/bot.ts`): no se conectan desde ningún lado, así
+que no cuestan mensajes de Cloudflare, y mandan inputs como cualquier jugador, sin hacer nada que
+un jugador no pueda. Encuentran el camino con A* sobre una grilla de medio metro armada a partir
+de las cajas del mapa (`sim/nav.ts`), subiendo escalones y plataformas bajas; los techos de los
+garajes no (son para la gente).
+
+Compran en el tiempo de compra (rifle del equipo si les alcanza, si no subfusil o escopeta, el
+chaleco si sobra, un AWP de vez en cuando), y después patrullan: los T van hacia la mitad CT, los
+CT aguantan un rato en la suya y salen. Cuando ven a alguien se frenan, apuntan con un error que
+va variando despacio, tardan un instante en reaccionar, tiran en ráfagas, se mueven de costado y,
+sin balas, pasan a la pistola o recargan. Si les pegan o se oye un tiro cerca, saben por dónde
+venir a buscarte. Ven en un cono delante de ellos: se los puede flanquear.
+
+**Dificultad** (`BOT_SKILLS`): *Fácil* (tarda 14-24 ticks en reaccionar, tiembla mucho, no se
+mueve al tirar), *Normal* (6-12 ticks) y *Difícil* (2-5 ticks, casi no tiembla, va a la cabeza
+casi la mitad de las veces).
+
+`node scripts/server-bots.mjs` prueba contra el servidor local que tres bots jueguen tres rondas
+solos: compran, se encuentran y se matan.
+
+Para probar desde afuera hay también clientes headless:
 
 ```bash
-node scripts/bot.mjs --room PRB7X9 --bots 1 --seconds 900 --humano
+node scripts/bot.mjs --room PRB7X9 --bots 1 --seconds 900 --humano --manso
 ```
 
-y entrá a la sala `PRB7X9` desde el navegador. El bot se pone en el otro equipo, espera a que
-marques listo y te busca para dispararte (es tonto: camina derecho hacia vos y tira sin apuntar
-demasiado; alcanza para probar el ciclo entero).
+Entran a la sala `PRB7X9` por socket, esperan a que haya alguien de verdad y caminan hacia vos;
+con `--manso` no disparan, para probar tus tiros tranquilo.
 
 ### Controles
 
@@ -194,6 +219,8 @@ packages/shared/     simulación, mapa y protocolo (TS puro, sin dependencias)
   src/sim/inventory.ts comprar, tirar y levantar
   src/sim/rounds.ts    rondas, economía, cambio de lado, fin del partido
   src/sim/step.ts      el tick autoritativo
+  src/sim/nav.ts       la grilla de caminos y el A* de los bots
+  src/sim/bot.ts       el cerebro de los bots
   src/protocol/        mensajes y códec
 apps/server/         Worker + Durable Object
   src/GameRoom.ts      sala, lobby, loop de 20 Hz, visibilidad, snapshots
@@ -205,7 +232,8 @@ apps/client/         juego
   src/ui.ts            menú, sala, HUD, compra, tabla, resultado
   src/audio.ts         sonido generado por código
 scripts/
-  bot.mjs              clientes headless que juegan
+  bot.mjs              clientes headless que juegan desde afuera
+  server-bots.mjs      prueba que los bots del servidor jueguen solos
   smoke-build.mjs      compila y comprueba que el bundle arranque
 ```
 
@@ -263,4 +291,4 @@ rechaza las que no coinciden con "Hay una versión nueva del juego: recargá la 
 
 ## Lo que falta
 
-Está en [IDEAS.md](IDEAS.md): bots de verdad en el servidor, granadas, modo bomba, más mapas, teléfono.
+Está en [IDEAS.md](IDEAS.md): granadas, modo bomba, más mapas, teléfono.
