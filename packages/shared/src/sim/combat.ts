@@ -4,8 +4,6 @@ import {
   ACT_SLOT_2,
   CROUCH_TICKS,
   HEAD_HEIGHT,
-  KILL_REWARD,
-  KNIFE_KILL_REWARD,
   LAG_COMP_MAX_TICKS,
   LEG_HEIGHT,
   MAX_MONEY,
@@ -20,7 +18,7 @@ import {
 import { hashUnit, lerp, viewDir, type Vec3 } from "../math.js";
 import { rayAabb, raycastBoxes, type RayHit } from "../map/raycast.js";
 import type { Box, GameMap } from "../map/types.js";
-import { HE_GRENADE, KNIFE, SLOT_GRENADE, SLOT_KNIFE, grenadeKind, weapon, type WeaponDef } from "../weapons.js";
+import { HE_GRENADE, KNIFE, SLOT_GRENADE, SLOT_KNIFE, grenadeKind, killReward, weapon, type WeaponDef } from "../weapons.js";
 import { eyeHeightOf, heightOf } from "./movement.js";
 import { dropWeaponAt } from "./inventory.js";
 import { HIT_BODY, HIT_HEAD, HIT_NONE, HIT_WORLD, type GameState, type PlayerInput, type PlayerState, type SimEvent } from "./types.js";
@@ -424,7 +422,7 @@ export function damagePlayer(
   // Matarse solo (la propia HE, la bomba) no suma ni paga.
   if (by.id !== target.id) {
     by.kills++;
-    by.money = Math.min(MAX_MONEY, by.money + (wid === KNIFE ? KNIFE_KILL_REWARD : KILL_REWARD));
+    by.money = Math.min(MAX_MONEY, by.money + killReward(wid));
   }
   // Las armas quedan en el piso: el rival (o el compañero) las puede levantar.
   for (let s = 0; s < 2; s++) {

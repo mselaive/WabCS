@@ -1,8 +1,8 @@
-import { ACT_BUY_BASE, ACT_DROP, ACT_NONE, ACT_PICKUP, MAX_HP, MODE_ELIM, START_MONEY, TEAM_T, TRAIL_LENGTH } from "../constants.js";
+import { ACT_BUY_BASE, ACT_DROP, ACT_NONE, ACT_PICKUP, FALL_DAMAGE_PER_MS, FALL_SAFE_SPEED, MAX_HP, MODE_ELIM, START_MONEY, TEAM_T, TRAIL_LENGTH, ZONE_LEGS } from "../constants.js";
 import type { GameMap } from "../map/types.js";
-import { KNIFE, SLOT_GRENADE, SLOT_SECONDARY, grenadeKind } from "../weapons.js";
+import { FALL_WEAPON, KNIFE, SLOT_GRENADE, SLOT_SECONDARY, grenadeKind } from "../weapons.js";
 import { busyWithBomb, createBombState, stepBomb, stepBombInput } from "./bomb.js";
-import { applySlotAction, firstUsableSlot, recordTrail, resolveShot, shotRewind, stepWeaponState, switchTo } from "./combat.js";
+import { applySlotAction, damagePlayer, firstUsableSlot, recordTrail, resolveShot, shotRewind, stepWeaponState, switchTo } from "./combat.js";
 import { stepGrenades, throwGrenade } from "./grenade.js";
 import { dropActive, tryBuy, tryPickup } from "./inventory.js";
 import { stepPlayerMovement } from "./movement.js";
@@ -35,6 +35,7 @@ export function createPlayer(id: number, team = TEAM_T): PlayerState {
     grenades: [0, 0, 0],
     blindTicks: 0,
     tagged: 0,
+    fallImpact: 0,
     hasBomb: false,
     kit: false,
     fireCd: 0,
@@ -124,6 +125,12 @@ function stepPlayerInput(state: GameState, p: PlayerState, input: PlayerInput, m
   // Plantando o desactivando no se camina (soltar E lo cancela).
   stepPlayerMovement(p, input, map, acting && !busyWithBomb(state, p.id));
   if (!p.alive) return;
+  // Caerse de alto duele (a las piernas; el chaleco no ayuda). Sólo el servidor lo cobra: la vida no se predice.
+  if (p.fallImpact > FALL_SAFE_SPEED) {
+    const dmg = Math.round((p.fallImpact - FALL_SAFE_SPEED) * FALL_DAMAGE_PER_MS);
+    damagePlayer(state, p, p, dmg, ZONE_LEGS, FALL_WEAPON, p.x, p.y, p.z, map, events);
+    if (!p.alive) return;
+  }
   if (acting) stepBombInput(state, p, input, map, events);
 
   if (input.act !== ACT_NONE) {

@@ -13,6 +13,7 @@ import {
   BUY_RADIUS,
   BUY_TICKS,
   FOV,
+  FALL_WEAPON,
   FOV_SCOPED,
   HEAD_HEIGHT,
   HIT_BODY,
@@ -519,7 +520,7 @@ export class Game {
         if (ev.targetId === this.myId) {
           const killer = this.buffer.latest?.players.get(ev.byId);
           const left = killer ? ` · le quedaban <b>${killer.hp}</b> de vida` : "";
-          this.deathInfo = `Te mató <b>${this.ui.nameOf(ev.byId)}</b> con ${weapon(ev.weapon).name}${ev.headshot ? " (en la cabeza)" : ""}${left}`;
+          this.deathInfo = ev.weapon === FALL_WEAPON ? "Te caíste de muy alto." : `Te mató <b>${this.ui.nameOf(ev.byId)}</b> con ${weapon(ev.weapon).name}${ev.headshot ? " (en la cabeza)" : ""}${left}`;
           this.ui.closeBuy();
         }
         return;

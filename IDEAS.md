@@ -36,6 +36,7 @@ Lo que hay, lo que quedó en la lista y por qué. Primera versión: 28 de octubr
 | Paredes finas y frenado | Los rifles atraviesan tabiques finos con menos daño (servidor y predicción iguales); un tiro recibido frena 0,4 s | 2 tests + revisado |
 | Manos | Pistolas a dos manos; la izquierda saca el cargador y bombea, la derecha trabaja el cerrojo | Capturas |
 | Bots en los techos | Grilla por niveles: suben por la escalera, patrullan arriba, bajan de un salto si hace falta | Test + `server-bots` |
+| Daño por caída y pagos por arma | Caerse de más de 2 m duele (del techo, ~25); matar con AWP paga $100, MP5 $600, escopeta $900 | 3 tests |
 | Silbido de balas | Las balas ajenas que pasan a menos de 2 m se oyen pasar | **No lo escuché** (ver sonido) |
 
 ## Lo que falta, en orden

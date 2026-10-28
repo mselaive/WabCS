@@ -65,6 +65,8 @@ export interface PlayerState {
   blindTicks: number;
   /** Ticks que le quedan frenado por un tiro recibido. */
   tagged: number;
+  /** Con qué velocidad (m/s) tocó el piso en este tick; 0 si no aterrizó. Para el daño por caída. */
+  fallImpact: number;
   /** Lleva la bomba (modo bomba, un T). */
   hasBomb: boolean;
   /** Kit de desactivación (CT). */

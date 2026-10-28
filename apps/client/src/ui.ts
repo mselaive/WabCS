@@ -601,7 +601,7 @@ export class UI {
     k.textContent = this.nameOf(killerId);
     const w = document.createElement("span");
     w.className = "w";
-    w.textContent = `[${weaponId === 12 ? "C4" : weapon(weaponId).short}${headshot ? " ☠" : ""}]`;
+    w.textContent = `[${weaponId === 12 ? "C4" : weaponId === 13 ? "caída" : weapon(weaponId).short}${headshot ? " ☠" : ""}]`;
     if (headshot) w.classList.add("hs");
     const v = document.createElement("span");
     v.className = this.teamOf(victimId) === TEAM_T ? "t" : "ct";

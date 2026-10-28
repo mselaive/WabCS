@@ -113,6 +113,8 @@ export function startRound(state: GameState, map: GameMap, events: SimEvent[]): 
       p.recoilCool = 0;
       p.scoped = false;
       p.blindTicks = 0;
+      p.tagged = 0;
+      p.fallImpact = 0;
       p.diedAtTick = -1;
       p.killerId = -1;
       // Si no tiene nada en la mano (se le fue la principal), que agarre algo.

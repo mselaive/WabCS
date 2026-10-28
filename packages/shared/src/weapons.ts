@@ -1,4 +1,4 @@
-import { TEAM_CT, TEAM_T } from "./constants.js";
+import { KILL_REWARD, KNIFE_KILL_REWARD, TEAM_CT, TEAM_T } from "./constants.js";
 
 /**
  * Ranuras: 0 principal (rifles, subfusil, escopeta, francotirador), 1 pistola,
@@ -145,9 +145,27 @@ export const AK47 = 5;
 export const M4A4 = 6;
 export const NOVA = 7;
 export const AWP = 8;
+/** Pseudoarma de los eventos de muerte por caída (no está en WEAPONS). */
+export const FALL_WEAPON = 13;
 
 export function weapon(id: number): WeaponDef {
   return WEAPONS[id] ?? WEAPONS[KNIFE]!;
+}
+
+/** Lo que paga matar con cada arma, como en CS: poco con el AWP, mucho con la escopeta y el cuchillo. */
+export function killReward(wid: number): number {
+  switch (wid) {
+    case KNIFE:
+      return KNIFE_KILL_REWARD;
+    case AWP:
+      return 100;
+    case NOVA:
+      return 900;
+    case MP5:
+      return 600;
+    default:
+      return KILL_REWARD;
+  }
 }
 
 /** La pistola con la que arranca cada equipo (y la que se da al que no tiene). */

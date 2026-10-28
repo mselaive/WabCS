@@ -94,6 +94,9 @@ export const START_MONEY = 800;
 export const MAX_MONEY = 16_000;
 export const KILL_REWARD = 300;
 export const KNIFE_KILL_REWARD = 1500;
+/** Caerse duele: por encima de esta velocidad de impacto (m/s), tantos HP por cada m/s de más. */
+export const FALL_SAFE_SPEED = 9;
+export const FALL_DAMAGE_PER_MS = 10;
 export const WIN_REWARD = 3250;
 /** Perder paga LOSS_BASE más LOSS_STEP por cada derrota seguida (hasta LOSS_MAX_STREAK). */
 export const LOSS_BASE = 1400;

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { BODEGA } from "../map/bodega.js";
 import { JUMP_SPEED, PLAYER_HEIGHT, STEP_HEIGHT, TICK_RATE } from "../constants.js";
 import { heightOf, stepPlayerMovement } from "./movement.js";
-import { createPlayer } from "./step.js";
+import { createGameState, createPlayer, step } from "./step.js";
+import type { SimEvent } from "./types.js";
 import type { PlayerInput } from "./types.js";
 
 const input = (over: Partial<PlayerInput> = {}): PlayerInput => ({
@@ -96,5 +97,39 @@ describe("movimiento", () => {
     expect(heightOf(p)).toBeLessThan(PLAYER_HEIGHT);
     for (let i = 0; i < 10; i++) stepPlayerMovement(p, input(), BODEGA, true);
     expect(heightOf(p)).toBeCloseTo(PLAYER_HEIGHT, 5);
+  });
+});
+
+describe("caerse", () => {
+  function fallFrom(height: number) {
+    const state = createGameState();
+    state.phase = "playing";
+    const p = createPlayer(1, 0);
+    p.alive = true;
+    p.x = 0;
+    p.z = 12.5;
+    p.y = height;
+    p.onGround = false;
+    state.players.push(p);
+    const events: SimEvent[] = [];
+    for (let i = 0; i < 2 * TICK_RATE; i++) step(state, new Map([[1, [input({ seq: i + 1 })]]]), events, BODEGA);
+    expect(p.onGround).toBe(true);
+    return { p, events };
+  }
+
+  it("de un salto o de una caja no pasa nada; del techo del garaje duele", () => {
+    expect(fallFrom(1.3).p.hp).toBe(100);
+    const { p, events } = fallFrom(3.25);
+    expect(p.hp).toBeLessThan(100);
+    expect(p.hp).toBeGreaterThan(60);
+    expect(p.alive).toBe(true);
+    expect(events.some((e) => e.t === "hit" && e.byId === 1 && e.targetId === 1)).toBe(true);
+  });
+
+  it("de muy alto mata, sin darle la baja a nadie", () => {
+    const { p, events } = fallFrom(14);
+    expect(p.alive).toBe(false);
+    expect(p.kills).toBe(0);
+    expect(events.some((e) => e.t === "kill" && e.targetId === 1 && e.weapon === 13)).toBe(true);
   });
 });

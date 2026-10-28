@@ -110,6 +110,7 @@ export function stepPlayerMovement(p: PlayerState, input: PlayerInput, map: Game
   p.pitch = clamp(input.pitch, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
   if (!p.alive) return;
   if (p.tagged > 0) p.tagged--;
+  p.fallImpact = 0;
 
   const boxes = map.boxes;
 
@@ -214,8 +215,12 @@ export function stepPlayerMovement(p: PlayerState, input: PlayerInput, map: Game
 
   // Vertical.
   p.onGround = false;
+  const vyBefore = p.vy;
   const landed = moveY(p, p.vy * DT, height, boxes);
-  if (landed === 1) p.onGround = true;
+  if (landed === 1) {
+    p.onGround = true;
+    p.fallImpact = -vyBefore;
+  }
 
   if (p.y < FALL_LIMIT) {
     // Se cayó del mundo (no debería pasar): al centro del mapa, arriba.

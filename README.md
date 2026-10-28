@@ -75,7 +75,7 @@ con `--manso` no disparan, para probar tus tiros tranquilo.
 | Click derecho | mira del AWP (mantener) |
 | `Shift` | caminar: más lento, sin ruido |
 | `Ctrl` / `C` | agacharse: más lento, más preciso, más bajo |
-| `Espacio` | saltar |
+| `Espacio` | saltar (caerse de más de ~2 m duele: del techo del garaje son ~25 de vida) |
 | `R` | recargar |
 | `1` / `2` / `3` | principal, pistola, cuchillo |
 | `4` / `5` / `6` | granada HE, flash, humo (click para tirarla) |
@@ -126,7 +126,7 @@ en `sim/bot.ts`).
 | Arranque (y después del cambio de lado) | $800 |
 | Ganar la ronda | +$3250 |
 | Perder la ronda | +$1400, más $500 por cada derrota seguida (hasta $3400) |
-| Kill | +$300 (con cuchillo, +$1500) |
+| Kill | +$300; con el AWP $100, con la MP5 $600, con la escopeta $900, con el cuchillo $1500 |
 | Tope | $16 000 |
 
 El que sobrevive **conserva** sus armas, su munición y su chaleco. El que muere arranca la ronda

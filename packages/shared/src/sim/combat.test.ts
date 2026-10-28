@@ -196,6 +196,19 @@ describe("el tiro", () => {
     expect(maxSpeedOf(target, input())).toBe(weapon(USP).speed);
   });
 
+  it("matar paga según el arma: poco con el AWP, mucho con la escopeta", () => {
+    const a = duel(AWP, 10);
+    a.shooter.scoped = true;
+    resolveShot(a.state, a.shooter, AWP, 1, 0, BODEGA, a.events);
+    expect(a.target.alive).toBe(false);
+    expect(a.shooter.money).toBe(800 + 100);
+    const b = duel(NOVA, 3);
+    b.target.hp = 10;
+    resolveShot(b.state, b.shooter, NOVA, 1, 0, BODEGA, b.events);
+    expect(b.target.alive).toBe(false);
+    expect(b.shooter.money).toBe(800 + 900);
+  });
+
   it("al morir se le caen las armas", () => {
     const { state, shooter, target, events } = duel(AWP, 6);
     shooter.scoped = true;
