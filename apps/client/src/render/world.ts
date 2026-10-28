@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { TEX_COUNT, type Box, type GameMap, type UnpackedDrop } from "@wabcs/shared";
-import { makeAllMaterials } from "./textures.js";
-import { buildWeaponMesh } from "./viewmodel.js";
+import { SMOKE_RADIUS, SMOKE_TICKS, TEX_COUNT, type Box, type GameMap, type SmokeState, type UnpackedDrop, type UnpackedGrenade } from "@wabcs/shared";
+import { makeAllMaterials, makePuffTexture } from "./textures.js";
+import { buildGrenadeMesh, buildWeaponMesh } from "./viewmodel.js";
 
 /** Un cilindro vertical inscripto en la caja (barriles), con los UV en metros. */
 function cylinderGeometry(b: Box): THREE.BufferGeometry {
@@ -104,6 +104,11 @@ export class World {
   private mapGroup = new THREE.Group();
   private dropMeshes = new Map<number, THREE.Group>();
   private dropGroup = new THREE.Group();
+  private grenadeMeshes = new Map<number, THREE.Group>();
+  private grenadeGroup = new THREE.Group();
+  private smokeClouds = new Map<number, THREE.Group>();
+  private smokeGroup = new THREE.Group();
+  private readonly smokeMat: THREE.SpriteMaterial;
   readonly sun: THREE.DirectionalLight;
   private sky: THREE.Mesh | null = null;
 
@@ -127,6 +132,9 @@ export class World {
     this.scene.add(this.sun.target);
     this.scene.add(this.mapGroup);
     this.scene.add(this.dropGroup);
+    this.scene.add(this.grenadeGroup);
+    this.scene.add(this.smokeGroup);
+    this.smokeMat = new THREE.SpriteMaterial({ map: makePuffTexture(), color: 0xd9dbd8, transparent: true, opacity: 0.85, depthWrite: false });
   }
 
   /** Luz de ambiente con reflejos suaves: hace que lo plano deje de verse plano. */
@@ -198,5 +206,81 @@ export class World {
   clearDrops(): void {
     this.dropGroup.clear();
     this.dropMeshes.clear();
+    this.grenadeGroup.clear();
+    this.grenadeMeshes.clear();
+    this.smokeGroup.clear();
+    this.smokeClouds.clear();
+  }
+
+  /** Las granadas en el aire: una malla por cada una, girando. */
+  updateGrenades(grenades: readonly UnpackedGrenade[], dt: number): void {
+    const seen = new Set<number>();
+    for (const g of grenades) {
+      seen.add(g.id);
+      let m = this.grenadeMeshes.get(g.id);
+      if (!m) {
+        m = buildGrenadeMesh(g.kind);
+        this.grenadeMeshes.set(g.id, m);
+        this.grenadeGroup.add(m);
+      }
+      m.position.set(g.x, g.y, g.z);
+      const spinning = Math.hypot(g.vx, g.vy, g.vz) > 0.5;
+      if (spinning) {
+        m.rotation.x += dt * 9;
+        m.rotation.z += dt * 5;
+      }
+    }
+    for (const [id, m] of this.grenadeMeshes) {
+      if (seen.has(id)) continue;
+      this.grenadeGroup.remove(m);
+      this.grenadeMeshes.delete(id);
+    }
+  }
+
+  /**
+   * Las nubes de humo: un montón de sprites en una esfera, que crecen al
+   * principio y se van cuando queda poco. Es lo que se ve; lo que se ve o no
+   * a través lo decide el servidor.
+   */
+  updateSmokes(smokes: readonly SmokeState[], dt: number): void {
+    const seen = new Set<number>();
+    for (const s of smokes) {
+      seen.add(s.id);
+      let cloud = this.smokeClouds.get(s.id);
+      if (!cloud) {
+        cloud = new THREE.Group();
+        for (let i = 0; i < 26; i++) {
+          const sp = new THREE.Sprite(this.smokeMat.clone());
+          const r = SMOKE_RADIUS * (0.3 + Math.random() * 0.7);
+          const a = Math.random() * Math.PI * 2;
+          const b = Math.random() * Math.PI - Math.PI / 2;
+          sp.position.set(Math.cos(a) * Math.cos(b) * r, Math.abs(Math.sin(b)) * r * 0.8 + 0.3, Math.sin(a) * Math.cos(b) * r);
+          sp.userData.base = 2.2 + Math.random() * 1.6;
+          sp.userData.phase = Math.random() * 6;
+          cloud.add(sp);
+        }
+        cloud.position.set(s.x, s.y, s.z);
+        this.smokeClouds.set(s.id, cloud);
+        this.smokeGroup.add(cloud);
+      }
+      // Crece en el primer segundo y se disipa en los últimos dos.
+      const age = SMOKE_TICKS - s.ticksLeft;
+      const grow = Math.min(1, age / 20);
+      const fade = Math.min(1, s.ticksLeft / 40);
+      cloud.scale.setScalar(0.2 + 0.8 * grow);
+      const t = performance.now() / 1000;
+      for (const sp of cloud.children as THREE.Sprite[]) {
+        const base = sp.userData.base as number;
+        const k = 1 + Math.sin(t * 0.7 + (sp.userData.phase as number)) * 0.08;
+        sp.scale.setScalar(base * k);
+        (sp.material as THREE.SpriteMaterial).opacity = 0.85 * fade;
+      }
+      void dt;
+    }
+    for (const [id, cloud] of this.smokeClouds) {
+      if (seen.has(id)) continue;
+      this.smokeGroup.remove(cloud);
+      this.smokeClouds.delete(id);
+    }
   }
 }

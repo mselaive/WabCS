@@ -58,6 +58,23 @@ body {
   display: none !important;
 }
 
+/* Ciego por una flash: blanco que se va yendo. */
+.flash-overlay {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  z-index: 3;
+}
+
+.nades {
+  margin-top: 4px;
+}
+
+.nades .slot {
+  color: var(--gold);
+}
+
 .vignette {
   position: absolute;
   inset: 0;

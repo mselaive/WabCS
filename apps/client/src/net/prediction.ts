@@ -3,8 +3,10 @@ import {
   ACT_DROP,
   ACT_NONE,
   ACT_PICKUP,
+  afterThrow,
   applySlotAction,
   createPlayer,
+  grenadeKind,
   shotDirections,
   stepPlayerMovement,
   stepWeaponState,
@@ -80,6 +82,8 @@ export class Predictor {
     this.prevCrouch = this.state.crouch;
     const weapon = this.step(input, map, canAct);
     if (weapon < 0) return null;
+    // Una granada no tiene perdigones: el juego la ve salir por el evento `throw`.
+    if (grenadeKind(weapon) >= 0) return { seq: input.seq, weapon, dirs: [] };
     return { seq: input.seq, weapon, dirs: shotDirections(this.state, weapon, input.seq) };
   }
 
@@ -96,7 +100,11 @@ export class Predictor {
     if (input.act !== ACT_NONE && input.act < ACT_BUY_BASE && input.act !== ACT_PICKUP && input.act !== ACT_DROP) {
       applySlotAction(s, input.act);
     }
-    return stepWeaponState(s, input, canAct);
+    const fired = stepWeaponState(s, input, canAct);
+    // Una granada tirada: una menos y, si no quedan, el arma de antes (igual que el servidor).
+    const kind = grenadeKind(fired);
+    if (kind >= 0) afterThrow(s, kind);
+    return fired;
   }
 
   private load(server: UnpackedPlayer): void {
@@ -113,15 +121,17 @@ export class Predictor {
     s.hp = server.hp;
     s.armor = server.armor;
     s.helmet = server.helmet;
-    s.slots = [server.slots[0], server.slots[1], server.slots[2]];
+    s.slots = [server.slots[0], server.slots[1], server.slots[2], server.slots[3]];
     s.active = server.active;
     s.reloading = server.reloading;
     s.scoped = server.scoped;
     s.shootHeld = server.shootHeld;
     if (server.own) {
       s.vy = server.own.vy;
-      s.ammo = [server.own.ammo[0], server.own.ammo[1], 0];
-      s.reserve = [server.own.reserve[0], server.own.reserve[1], 0];
+      s.ammo = [server.own.ammo[0], server.own.ammo[1], 0, 0];
+      s.reserve = [server.own.reserve[0], server.own.reserve[1], 0, 0];
+      s.grenades = [server.own.grenades[0], server.own.grenades[1], server.own.grenades[2]];
+      s.blindTicks = server.own.blindTicks;
       s.money = server.own.money;
       s.fireCd = server.own.fireCd;
       s.reloadCd = server.own.reloadCd;

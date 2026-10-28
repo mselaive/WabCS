@@ -212,6 +212,16 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
       leftHand = [0, -0.005, -0.34];
       break;
     }
+    case 9:
+    case 10:
+    case 11: {
+      // La granada en la mano: se sostiene adelante, con la anilla.
+      const gm = buildGrenadeMesh(id - 9);
+      gm.position.set(0, 0.0, -0.05);
+      g.add(gm);
+      rightHand = [0, -0.04, 0.0];
+      break;
+    }
     default:
       box(g, 0.04, 0.06, 0.3, 0, 0, -0.1, POLYMER);
   }
@@ -230,10 +240,29 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
   return g;
 }
 
+/** Una granada en el mundo: la HE verde y redonda, la flash y el humo cilíndricos. */
+export function buildGrenadeMesh(kind: number): THREE.Group {
+  const g = new THREE.Group();
+  if (kind === 0) {
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), mat(GREEN));
+    g.add(body);
+    tube(g, 0.02, 0.03, 0, 0.08, 0, STEEL_LIGHT, 8);
+  } else {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.14, 10), mat(kind === 1 ? STEEL_LIGHT : { color: 0x6d7a6d, metal: 0.3, rough: 0.6 }));
+    g.add(body);
+    tube(g, 0.02, 0.03, 0, 0.085, 0, STEEL, 8);
+    if (kind === 2) box(g, 0.04, 0.03, 0.04, 0, -0.04, 0, { color: 0xb8b0a0, metal: 0.4, rough: 0.5 });
+  }
+  return g;
+}
+
 /** Dónde queda la punta del caño, en el espacio del arma (para el fogonazo). */
 export function muzzleOffset(id: number): THREE.Vector3 {
   switch (id) {
     case KNIFE:
+    case 9:
+    case 10:
+    case 11:
       return new THREE.Vector3(0, 0, -0.3);
     case GLOCK:
       return new THREE.Vector3(0, 0.032, -0.2);
@@ -354,7 +383,8 @@ export class ViewModel {
   /** Un tiro salió: retroceso, fogonazo, corredera; el cerrojo o la bomba después. */
   fire(): void {
     const w = weapon(this.current);
-    if (w.melee > 0) {
+    if (w.melee > 0 || this.current >= 9) {
+      // El tajo del cuchillo, o el brazo que tira la granada: el mismo movimiento.
       this.knifeT = 0.28;
       return;
     }

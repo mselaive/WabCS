@@ -16,6 +16,7 @@
     <div id="stage"></div>
 
     <div id="hud" hidden>
+      <div id="flashOverlay" class="flash-overlay"></div>
       <div id="damageVignette" class="vignette"></div>
       <div id="lowHp" class="vignette low-hp"></div>
       <div id="scope" class="scope" hidden><div class="scope-h"></div><div class="scope-v"></div></div>
@@ -55,6 +56,7 @@
         <div id="weaponName" class="weapon-name">USP-S</div>
         <div class="ammo"><span id="ammoMag">12</span><span class="ammo-sep">/</span><span id="ammoReserve">24</span></div>
         <div id="slots" class="slots"></div>
+        <div id="nades" class="slots nades"></div>
       </div>
 
       <div id="teamChat" class="team-chat">
@@ -66,7 +68,7 @@
         <h3>Comprar <small>B para cerrar</small></h3>
         <div id="buyMoney" class="buy-money">$800</div>
         <ol id="buyList" class="buy-list"></ol>
-        <p class="hint">Apretá el número del ítem. Se compra en el tiempo de compra y los primeros 10 s, cerca de tu spawn.</p>
+        <p class="hint">Apretá la tecla del ítem (o hacé click). Se compra en el tiempo de compra y los primeros 10 s, cerca de tu spawn.</p>
       </div>
     </div>
 
@@ -117,6 +119,7 @@
             <li><b>WASD</b> — moverse · <b>Shift</b> — caminar (sin ruido) · <b>Ctrl</b> / <b>C</b> — agacharse · <b>Espacio</b> — saltar</li>
             <li><b>Mouse</b> — mirar · <b>Click izquierdo</b> — disparar · <b>Click derecho</b> — mira (AWP)</li>
             <li><b>R</b> — recargar · <b>1</b> / <b>2</b> / <b>3</b> — principal, pistola, cuchillo · <b>Q</b> — la última arma</li>
+            <li><b>4</b> / <b>5</b> / <b>6</b> — granada HE, flash, humo (click para tirarla)</li>
             <li><b>B</b> — comprar (en el tiempo de compra, cerca de tu spawn) · <b>E</b> — levantar un arma · <b>G</b> — tirar la tuya</li>
             <li><b>Tab</b> — tabla · <b>Enter</b> — chat del equipo · <b>Esc</b> — soltar el mouse</li>
           </ul>

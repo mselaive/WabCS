@@ -200,6 +200,48 @@ export class Audio {
     else this.tone(900, 0.05, 0.2, 0, "square");
   }
 
+  /** Una granada que sale de la mano (el clic de la anilla y el brazo). */
+  throwNade(x: number | null, z: number | null): void {
+    if (!this.ctx) return;
+    const { gain, pan } = this.spatial(x, z, 5);
+    this.noise(0.04, 2400, 0.2 * gain, pan, "highpass");
+  }
+
+  /** La HE: grave y larga, se oye en todo el mapa. */
+  explosion(x: number, z: number): void {
+    if (!this.ctx) return;
+    const { gain, pan } = this.spatial(x, z, 14);
+    this.noise(0.5, 500, 1.2 * gain, pan);
+    this.tone(60, 0.5, 0.9 * gain, pan, "sine", 25);
+  }
+
+  /** La flash: un estampido agudo y, si te cegó, un pitido que se apaga. */
+  flashbang(x: number, z: number, blindedSeconds: number): void {
+    if (!this.ctx) return;
+    const { gain, pan } = this.spatial(x, z, 12);
+    this.noise(0.18, 3000, 0.9 * gain, pan, "highpass");
+    if (blindedSeconds > 0.3) {
+      const ctx = this.ctx;
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = 2600;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.12, ctx.currentTime);
+      env.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + blindedSeconds);
+      o.connect(env);
+      env.connect(this.master!);
+      o.start();
+      o.stop(ctx.currentTime + blindedSeconds + 0.05);
+    }
+  }
+
+  /** El humo: un soplido corto. */
+  smoke(x: number, z: number): void {
+    if (!this.ctx) return;
+    const { gain, pan } = this.spatial(x, z, 10);
+    this.noise(0.6, 900, 0.35 * gain, pan, "bandpass", 0.7);
+  }
+
   /** Mataste a alguien: dos notas cortas. */
   kill(): void {
     if (!this.ctx) return;

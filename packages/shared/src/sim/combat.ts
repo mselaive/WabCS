@@ -1,4 +1,5 @@
 import {
+  ACT_GRENADE_BASE,
   ACT_SLOT_0,
   ACT_SLOT_2,
   CROUCH_TICKS,
@@ -18,7 +19,7 @@ import {
 import { hashUnit, lerp, viewDir, type Vec3 } from "../math.js";
 import { rayAabb, raycastBoxes } from "../map/raycast.js";
 import type { GameMap } from "../map/types.js";
-import { KNIFE, SLOT_KNIFE, weapon, type WeaponDef } from "../weapons.js";
+import { HE_GRENADE, KNIFE, SLOT_GRENADE, SLOT_KNIFE, grenadeKind, weapon, type WeaponDef } from "../weapons.js";
 import { eyeHeightOf, heightOf } from "./movement.js";
 import { dropWeaponAt } from "./inventory.js";
 import { HIT_BODY, HIT_HEAD, HIT_NONE, HIT_WORLD, type GameState, type PlayerInput, type PlayerState, type SimEvent } from "./types.js";
@@ -37,6 +38,15 @@ const AIR_SPREAD = 0.1;
  * predicción: de esto depende qué arma dispara.
  */
 export function applySlotAction(p: PlayerState, act: number): void {
+  if (act >= ACT_GRENADE_BASE && act < ACT_GRENADE_BASE + 3) {
+    // Sacar una granada: la de ese tipo, si queda alguna.
+    const kind = act - ACT_GRENADE_BASE;
+    if ((p.grenades[kind] ?? 0) <= 0) return;
+    if (p.active === SLOT_GRENADE && p.slots[SLOT_GRENADE] === HE_GRENADE + kind) return;
+    p.slots[SLOT_GRENADE] = HE_GRENADE + kind;
+    switchTo(p, SLOT_GRENADE);
+    return;
+  }
   if (act < ACT_SLOT_0 || act > ACT_SLOT_2) return;
   const slot = act - ACT_SLOT_0;
   if (slot === p.active) return;
@@ -104,6 +114,18 @@ export function stepWeaponState(p: PlayerState, input: PlayerInput, canAct: bool
   const ammo = p.ammo[p.active] ?? 0;
   const reserve = p.reserve[p.active] ?? 0;
   const ready = p.fireCd === 0 && p.drawCd === 0 && !p.reloading;
+
+  // Una granada en la mano: "disparar" es tirarla (si queda alguna de ese tipo).
+  const gk = grenadeKind(wid);
+  if (gk >= 0) {
+    let fired = -1;
+    if (canAct && input.shoot && !p.shootHeld && ready && (p.grenades[gk] ?? 0) > 0) {
+      p.fireCd = w.fireTicks;
+      fired = wid;
+    }
+    p.shootHeld = input.shoot;
+    return fired;
+  }
 
   // Recargar: apretando R, o al apretar el gatillo con el cargador vacío.
   const wantsReload = input.reload || (input.shoot && ammo === 0 && w.mag > 0);

@@ -24,6 +24,9 @@ export interface PlayerInput {
   view: number;
 }
 
+/** Cuatro ranuras: principal, pistola, cuchillo, y la granada en la mano. */
+export type Slots = [number, number, number, number];
+
 export interface PlayerState {
   id: number;
   /** TEAM_T o TEAM_CT. */
@@ -49,11 +52,15 @@ export interface PlayerState {
   armor: number;
   helmet: boolean;
 
-  /** Arma por ranura (id) o -1. La 2 siempre es el cuchillo. */
-  slots: [number, number, number];
-  ammo: [number, number, number];
-  reserve: [number, number, number];
+  /** Arma por ranura (id) o -1. La 2 siempre es el cuchillo; la 3, la granada que tiene en la mano. */
+  slots: Slots;
+  ammo: Slots;
+  reserve: Slots;
   active: number;
+  /** Cuántas granadas lleva de cada tipo: [HE, flash, humo]. */
+  grenades: [number, number, number];
+  /** Ticks que le quedan ciego por una flash. */
+  blindTicks: number;
   /** Ticks hasta poder disparar / terminar de recargar / terminar de sacar el arma. */
   fireCd: number;
   reloadCd: number;
@@ -91,6 +98,31 @@ export interface DropState {
   ticksLeft: number;
 }
 
+/** Una granada en el aire (o rodando), hasta que estalla. */
+export interface GrenadeState {
+  id: number;
+  /** 0 HE, 1 flash, 2 humo. */
+  kind: number;
+  ownerId: number;
+  team: number;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  ticksLeft: number;
+}
+
+/** Una nube de humo: tapa la vista (no las balas) mientras dure. */
+export interface SmokeState {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  ticksLeft: number;
+}
+
 export interface RoundState {
   /** Desde 1. */
   number: number;
@@ -113,6 +145,9 @@ export interface GameState {
   players: PlayerState[];
   drops: DropState[];
   nextDropId: number;
+  grenades: GrenadeState[];
+  smokes: SmokeState[];
+  nextGrenadeId: number;
   round: RoundState;
   /** Equipo que ganó el partido, o -1. */
   winnerTeam: number;
@@ -179,4 +214,8 @@ export type SimEvent =
   | { t: "pickup"; byId: number; weapon: number }
   | { t: "drop"; byId: number; weapon: number }
   | { t: "reload"; byId: number; x: number; y: number; z: number }
-  | { t: "steps"; byId: number; x: number; y: number; z: number };
+  | { t: "steps"; byId: number; x: number; y: number; z: number }
+  /** Alguien tiró una granada (para el sonido y para emparejar la predicción). */
+  | { t: "throw"; byId: number; seq: number; kind: number; id: number }
+  /** Estalló: HE (daño ya aplicado por `hit`), flash (los `blindTicks` van en el snapshot) o humo. */
+  | { t: "explode"; id: number; kind: number; x: number; y: number; z: number };

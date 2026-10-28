@@ -5,6 +5,7 @@ import {
   TEAM_T,
   WIN_ROUNDS_OPTIONS,
   weapon,
+  type BuyItem,
   type PlayerMeta,
   type SnapStanding,
 } from "@wabcs/shared";
@@ -365,7 +366,12 @@ export class UI {
     const w = weapon(weaponId);
     $("weaponName").textContent = w.name;
     const magEl = $("ammoMag");
-    if (w.mag === 0) {
+    if (w.slot === 3) {
+      // Una granada en la mano: cuántas quedan de ese tipo.
+      magEl.textContent = String(mag);
+      magEl.classList.remove("low");
+      $("ammoReserve").textContent = "";
+    } else if (w.mag === 0) {
       magEl.textContent = "—";
       magEl.classList.remove("low");
       $("ammoReserve").textContent = "";
@@ -377,12 +383,36 @@ export class UI {
     const slotsEl = $("slots");
     slotsEl.replaceChildren();
     const labels = ["1", "2", "3"];
-    slots.forEach((id, i) => {
+    slots.slice(0, 3).forEach((id, i) => {
       const s = document.createElement("span");
       s.className = `slot${i === active ? " active" : ""}${id < 0 ? " empty" : ""}`;
       s.textContent = `${labels[i]} ${id >= 0 ? weapon(id).short : "—"}`;
       slotsEl.append(s);
     });
+  }
+
+  private lastNades = "";
+
+  /** Las granadas que lleva: 4 HE, 5 flash, 6 humo, con la cantidad; la que tiene en la mano, marcada. */
+  setGrenades(counts: readonly number[], heldKind: number): void {
+    const key = `${counts.join(",")}|${heldKind}`;
+    if (key === this.lastNades) return;
+    this.lastNades = key;
+    const el = $("nades");
+    el.replaceChildren();
+    const names = ["HE", "Flash", "Humo"];
+    counts.forEach((n, i) => {
+      if (n <= 0) return;
+      const s = document.createElement("span");
+      s.className = `slot${heldKind === i ? " active" : ""}`;
+      s.textContent = `${4 + i} ${names[i]}${n > 1 ? ` ×${n}` : ""}`;
+      el.append(s);
+    });
+  }
+
+  /** Cuánto queda de ceguera (0 a 1): el blanco de la pantalla. */
+  setBlind(amount: number): void {
+    $("flashOverlay").style.opacity = String(Math.max(0, Math.min(1, amount)));
   }
 
   private lastGap = -1;
@@ -524,15 +554,18 @@ export class UI {
   renderBuy(team: number, money: number): void {
     if (!this.buyOpen) return;
     this.buyList.replaceChildren();
-    let key = 1;
-    BUY_ITEMS.forEach((item, index) => {
+    // Las armas con 1 a 6, las granadas con 7, 8 y 9, el chaleco con 0 y el casco con C.
+    const order = [...BUY_ITEMS.map((item, index) => ({ item, index }))].sort((a, b) => rank(a.item) - rank(b.item));
+    let weaponKey = 1;
+    order.forEach(({ item, index }) => {
       if (item.team !== -1 && item.team !== team) return;
       const li = document.createElement("li");
       const cant = money < item.price;
       li.className = cant ? "cant" : "";
       const k = document.createElement("span");
       k.className = "key";
-      k.textContent = String(key);
+      const key = item.weapon >= 0 ? String(weaponKey++) : item.grenade !== undefined ? String(7 + item.grenade) : item.armor === "kevlar" ? "0" : "C";
+      k.textContent = key;
       const name = document.createElement("span");
       name.textContent = item.name;
       if (item.weapon >= 0) {
@@ -540,6 +573,11 @@ export class UI {
         const desc = document.createElement("small");
         desc.className = "desc";
         desc.textContent = `${w.damage} daño · ${w.mag} balas · ${w.auto ? "automática" : "semi"}`;
+        name.append(desc);
+      } else if (item.grenade !== undefined) {
+        const desc = document.createElement("small");
+        desc.className = "desc";
+        desc.textContent = ["Explota a los 1,6 s: hasta 98 de daño, menos con la distancia y nada detrás de una pared", "Ciega al que la mira; hasta 2", "15 s de humo que tapa la vista"][item.grenade] ?? "";
         name.append(desc);
       } else {
         const desc = document.createElement("small");
@@ -551,16 +589,15 @@ export class UI {
       price.className = "price";
       price.textContent = `$${item.price}`;
       li.append(k, name, price);
-      li.dataset.key = String(key);
+      li.dataset.key = key;
       li.addEventListener("click", () => this.cb.onBuy(index));
       this.buyList.append(li);
-      key++;
     });
   }
 
-  /** Una tecla numérica con el menú abierto: el ítem con ese número. */
-  buyByKey(digit: number): void {
-    const li = this.buyList.querySelector<HTMLElement>(`li[data-key="${digit}"]`);
+  /** Una tecla con el menú abierto ("1".."9", "0", "C"): el ítem con esa tecla. */
+  buyByKey(key: string): void {
+    const li = this.buyList.querySelector<HTMLElement>(`li[data-key="${key}"]`);
     li?.click();
   }
 
@@ -633,6 +670,13 @@ export class UI {
   get isTeamChatOpen(): boolean {
     return !this.teamChatInput.hidden;
   }
+}
+
+/** El orden del menú de compra: armas, granadas, chaleco, casco. */
+function rank(item: BuyItem): number {
+  if (item.weapon >= 0) return item.weapon;
+  if (item.grenade !== undefined) return 100 + item.grenade;
+  return item.armor === "kevlar" ? 200 : 201;
 }
 
 function escapeHtml(s: string): string {

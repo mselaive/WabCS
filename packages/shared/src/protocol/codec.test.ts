@@ -16,10 +16,10 @@ describe("el códec", () => {
     p.hp = 73;
     p.armor = 55;
     p.helmet = true;
-    p.slots = [AK47, USP, 0];
+    p.slots = [AK47, USP, 0, -1];
     p.active = 0;
-    p.ammo = [17, 12, 0];
-    p.reserve = [60, 24, 0];
+    p.ammo = [17, 12, 0, 0];
+    p.reserve = [60, 24, 0, 0];
     p.money = 4200;
     p.fireCd = 1;
     p.reloadCd = 0;
@@ -28,6 +28,8 @@ describe("el códec", () => {
     p.vy = -1.5;
     p.lastSeq = 999;
     p.shootHeld = true;
+    p.grenades = [1, 2, 1];
+    p.blindTicks = 7;
 
     const own = unpackPlayer(packPlayer(p, true));
     expect(own.id).toBe(7);
@@ -40,16 +42,18 @@ describe("el códec", () => {
     expect(own.armor).toBe(55);
     expect(own.helmet).toBe(true);
     expect(own.weapon).toBe(AK47);
-    expect(own.slots).toEqual([AK47, USP, 0]);
+    expect(own.slots).toEqual([AK47, USP, 0, -1]);
     expect(own.active).toBe(0);
     expect(own.lastSeq).toBe(999);
     expect(own.crouch).toBe(2);
     expect(own.shootHeld).toBe(true);
-    expect(own.own?.ammo).toEqual([17, 12, 0]);
-    expect(own.own?.reserve).toEqual([60, 24, 0]);
+    expect(own.own?.ammo).toEqual([17, 12, 0, 0]);
+    expect(own.own?.reserve).toEqual([60, 24, 0, 0]);
     expect(own.own?.money).toBe(4200);
     expect(own.own?.recoil).toBe(3);
     expect(own.own?.vy).toBeCloseTo(-1.5, 2);
+    expect(own.own?.grenades).toEqual([1, 2, 1]);
+    expect(own.own?.blindTicks).toBe(7);
 
     const other = unpackPlayer(packPlayer(p, false));
     expect(other.own).toBeNull();
@@ -58,7 +62,7 @@ describe("el códec", () => {
 
   it("la ranura activa se recupera aunque las dos armas tengan el mismo id", () => {
     const p = createPlayer(1);
-    p.slots = [-1, USP, 0];
+    p.slots = [-1, USP, 0, -1];
     p.active = 2;
     const u = unpackPlayer(packPlayer(p, false));
     expect(u.active).toBe(2);

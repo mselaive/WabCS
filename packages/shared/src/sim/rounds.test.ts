@@ -41,8 +41,8 @@ describe("las rondas", () => {
     const { state } = match();
     expect(state.round.phase).toBe("freeze");
     const [t, ct] = state.players;
-    expect(t!.slots).toEqual([-1, GLOCK, KNIFE]);
-    expect(ct!.slots).toEqual([-1, USP, KNIFE]);
+    expect(t!.slots).toEqual([-1, GLOCK, KNIFE, -1]);
+    expect(ct!.slots).toEqual([-1, USP, KNIFE, -1]);
     expect(t!.money).toBe(START_MONEY);
     expect(t!.z).toBeGreaterThan(0);
     expect(ct!.z).toBeLessThan(0);

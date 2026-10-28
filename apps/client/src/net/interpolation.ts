@@ -2,11 +2,15 @@ import {
   lerp,
   lerpAngle,
   unpackDrop,
+  unpackGrenade,
   unpackPlayer,
   unpackRound,
+  unpackSmoke,
+  type SmokeState,
   type SnapshotMsg,
   type SnapStanding,
   type UnpackedDrop,
+  type UnpackedGrenade,
   type UnpackedPlayer,
   type UnpackedRound,
 } from "@wabcs/shared";
@@ -17,6 +21,8 @@ export interface Frame {
   recvAt: number;
   players: Map<number, UnpackedPlayer>;
   drops: UnpackedDrop[];
+  grenades: Map<number, UnpackedGrenade>;
+  smokes: SmokeState[];
   round: UnpackedRound;
   standings: SnapStanding[];
 }
@@ -26,6 +32,8 @@ export interface InterpolatedFrame {
   tick: number;
   players: UnpackedPlayer[];
   drops: UnpackedDrop[];
+  grenades: UnpackedGrenade[];
+  smokes: SmokeState[];
   round: UnpackedRound;
 }
 
@@ -53,6 +61,8 @@ export class SnapshotBuffer {
       recvAt,
       players,
       drops: msg.drops.map(unpackDrop),
+      grenades: new Map((msg.gr ?? []).map(unpackGrenade).map((g) => [g.id, g])),
+      smokes: (msg.sm ?? []).map(unpackSmoke),
       round: unpackRound(msg.rd),
       standings: msg.st,
     });
@@ -73,8 +83,8 @@ export class SnapshotBuffer {
     if (!last) return null;
     const first = this.frames[0]!;
 
-    if (renderTime >= last.recvAt) return { tick: last.tick, players: [...last.players.values()], drops: last.drops, round: last.round };
-    if (renderTime <= first.recvAt) return { tick: first.tick, players: [...first.players.values()], drops: first.drops, round: first.round };
+    if (renderTime >= last.recvAt) return { tick: last.tick, players: [...last.players.values()], drops: last.drops, grenades: [...last.grenades.values()], smokes: last.smokes, round: last.round };
+    if (renderTime <= first.recvAt) return { tick: first.tick, players: [...first.players.values()], drops: first.drops, grenades: [...first.grenades.values()], smokes: first.smokes, round: first.round };
 
     let a = first;
     let b = last;
@@ -109,6 +119,13 @@ export class SnapshotBuffer {
       });
     }
 
-    return { tick: lerp(a.tick, b.tick, t), players, drops: b.drops, round: b.round };
+    // Las granadas vuelan y rebotan: se interpolan como los jugadores.
+    const grenades: UnpackedGrenade[] = [];
+    for (const [id, target] of b.grenades) {
+      const prev = a.grenades.get(id);
+      grenades.push(prev ? { ...target, x: lerp(prev.x, target.x, t), y: lerp(prev.y, target.y, t), z: lerp(prev.z, target.z, t) } : target);
+    }
+
+    return { tick: lerp(a.tick, b.tick, t), players, drops: b.drops, grenades, smokes: b.smokes, round: b.round };
   }
 }

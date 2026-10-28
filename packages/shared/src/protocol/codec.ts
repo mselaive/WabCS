@@ -1,4 +1,4 @@
-import type { DropState, GameState, PlayerState } from "../sim/types.js";
+import type { DropState, GameState, GrenadeState, PlayerState, SmokeState } from "../sim/types.js";
 import {
   FLAG_ALIVE,
   FLAG_CONNECTED,
@@ -27,8 +27,10 @@ import {
   type ClientMsg,
   type ServerMsg,
   type SnapDrop,
+  type SnapGrenade,
   type SnapPlayer,
   type SnapRound,
+  type SnapSmoke,
   type SnapStanding,
 } from "./messages.js";
 
@@ -113,6 +115,8 @@ export function packPlayer(p: PlayerState, own: boolean): SnapPlayer {
       p.drawCd,
       p.recoil,
       Math.round(p.vy * P),
+      (p.grenades[0] ?? 0) + (p.grenades[1] ?? 0) * 4 + (p.grenades[2] ?? 0) * 16,
+      p.blindTicks,
     );
   }
   return out;
@@ -137,7 +141,7 @@ export interface UnpackedPlayer {
   shootHeld: boolean;
   /** Id del arma en la mano. */
   weapon: number;
-  slots: [number, number, number];
+  slots: [number, number, number, number];
   active: number;
   lastSeq: number;
   crouch: number;
@@ -145,14 +149,16 @@ export interface UnpackedPlayer {
   vz: number;
   /** Sólo en la tupla propia. */
   own: {
-    ammo: [number, number, number];
-    reserve: [number, number, number];
+    ammo: [number, number, number, number];
+    reserve: [number, number, number, number];
     money: number;
     fireCd: number;
     reloadCd: number;
     drawCd: number;
     recoil: number;
     vy: number;
+    grenades: [number, number, number];
+    blindTicks: number;
   } | null;
 }
 
@@ -162,19 +168,23 @@ export function unpackPlayer(t: SnapPlayer): UnpackedPlayer {
   const s0 = (slotsPacked % 16) - 1;
   const s1 = Math.floor(slotsPacked / 16) - 1;
   const weapon = t[SP_ACTIVE] ?? 0;
-  const slots: [number, number, number] = [s0, s1, 0];
-  const active = weapon === s0 && s0 >= 0 ? 0 : weapon === s1 && s1 >= 0 ? 1 : 2;
+  const isGrenade = weapon >= 9 && weapon <= 11;
+  const slots: [number, number, number, number] = [s0, s1, 0, isGrenade ? weapon : -1];
+  const active = isGrenade ? 3 : weapon === s0 && s0 >= 0 ? 0 : weapon === s1 && s1 >= 0 ? 1 : 2;
+  const gpacked = t[SP_OWN + 10] ?? 0;
   const own =
     t.length > SP_OWN
       ? {
-          ammo: [t[SP_OWN] ?? 0, t[SP_OWN + 2] ?? 0, 0] as [number, number, number],
-          reserve: [t[SP_OWN + 1] ?? 0, t[SP_OWN + 3] ?? 0, 0] as [number, number, number],
+          ammo: [t[SP_OWN] ?? 0, t[SP_OWN + 2] ?? 0, 0, 0] as [number, number, number, number],
+          reserve: [t[SP_OWN + 1] ?? 0, t[SP_OWN + 3] ?? 0, 0, 0] as [number, number, number, number],
           money: t[SP_OWN + 4] ?? 0,
           fireCd: t[SP_OWN + 5] ?? 0,
           reloadCd: t[SP_OWN + 6] ?? 0,
           drawCd: t[SP_OWN + 7] ?? 0,
           recoil: t[SP_OWN + 8] ?? 0,
           vy: (t[SP_OWN + 9] ?? 0) / P,
+          grenades: [gpacked % 4, Math.floor(gpacked / 4) % 4, Math.floor(gpacked / 16) % 4] as [number, number, number],
+          blindTicks: t[SP_OWN + 11] ?? 0,
         }
       : null;
   return {
@@ -220,6 +230,33 @@ export interface UnpackedDrop {
 
 export function unpackDrop(t: SnapDrop): UnpackedDrop {
   return { id: t[0], weapon: t[1], x: t[2] / P, y: t[3] / P, z: t[4] / P, yaw: unpackAngle(t[5]) };
+}
+
+export function packGrenade(g: GrenadeState): SnapGrenade {
+  return [g.id, g.kind, Math.round(g.x * P), Math.round(g.y * P), Math.round(g.z * P), Math.round(g.vx * P), Math.round(g.vy * P), Math.round(g.vz * P)];
+}
+
+export interface UnpackedGrenade {
+  id: number;
+  kind: number;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+}
+
+export function unpackGrenade(t: SnapGrenade): UnpackedGrenade {
+  return { id: t[0], kind: t[1], x: t[2] / P, y: t[3] / P, z: t[4] / P, vx: t[5] / P, vy: t[6] / P, vz: t[7] / P };
+}
+
+export function packSmoke(s: SmokeState): SnapSmoke {
+  return [s.id, Math.round(s.x * P), Math.round(s.y * P), Math.round(s.z * P), s.ticksLeft];
+}
+
+export function unpackSmoke(t: SnapSmoke): SmokeState {
+  return { id: t[0], x: t[1] / P, y: t[2] / P, z: t[3] / P, ticksLeft: t[4] };
 }
 
 export function packRound(state: GameState): SnapRound {

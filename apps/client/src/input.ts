@@ -1,5 +1,6 @@
 import {
   ACT_DROP,
+  ACT_GRENADE_BASE,
   ACT_NONE,
   ACT_PICKUP,
   ACT_SLOT_0,
@@ -13,6 +14,9 @@ const ACTION_KEYS: Record<string, number> = {
   Digit1: ACT_SLOT_0,
   Digit2: ACT_SLOT_1,
   Digit3: ACT_SLOT_2,
+  Digit4: ACT_GRENADE_BASE + 0,
+  Digit5: ACT_GRENADE_BASE + 1,
+  Digit6: ACT_GRENADE_BASE + 2,
   KeyE: ACT_PICKUP,
   KeyG: ACT_DROP,
 };

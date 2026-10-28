@@ -1,7 +1,8 @@
 import { ACT_BUY_BASE, ACT_DROP, ACT_NONE, ACT_PICKUP, MAX_HP, START_MONEY, TEAM_T, TRAIL_LENGTH } from "../constants.js";
 import type { GameMap } from "../map/types.js";
-import { KNIFE, SLOT_SECONDARY } from "../weapons.js";
-import { applySlotAction, recordTrail, resolveShot, shotRewind, stepWeaponState } from "./combat.js";
+import { KNIFE, SLOT_GRENADE, SLOT_SECONDARY, grenadeKind } from "../weapons.js";
+import { applySlotAction, firstUsableSlot, recordTrail, resolveShot, shotRewind, stepWeaponState, switchTo } from "./combat.js";
+import { stepGrenades, throwGrenade } from "./grenade.js";
 import { dropActive, tryBuy, tryPickup } from "./inventory.js";
 import { stepPlayerMovement } from "./movement.js";
 import { stepRound } from "./rounds.js";
@@ -26,10 +27,12 @@ export function createPlayer(id: number, team = TEAM_T): PlayerState {
     hp: MAX_HP,
     armor: 0,
     helmet: false,
-    slots: [-1, -1, KNIFE],
-    ammo: [0, 0, 0],
-    reserve: [0, 0, 0],
+    slots: [-1, -1, KNIFE, -1],
+    ammo: [0, 0, 0, 0],
+    reserve: [0, 0, 0, 0],
     active: SLOT_SECONDARY,
+    grenades: [0, 0, 0],
+    blindTicks: 0,
     fireCd: 0,
     reloadCd: 0,
     drawCd: 0,
@@ -57,6 +60,9 @@ export function createGameState(): GameState {
     players: [],
     drops: [],
     nextDropId: 1,
+    grenades: [],
+    smokes: [],
+    nextGrenadeId: 1,
     round: {
       number: 0,
       phase: "freeze",
@@ -85,8 +91,27 @@ export function canAct(state: GameState): boolean {
 }
 
 /**
+ * Después de tirar una granada: una menos de ese tipo, y si no quedan de ese
+ * tipo se pasa a otro tipo que quede, o al arma de antes. Compartido con la
+ * predicción, que también tiene que saber con qué se queda en la mano.
+ */
+export function afterThrow(p: PlayerState, kind: number): void {
+  p.grenades[kind] = Math.max(0, (p.grenades[kind] ?? 0) - 1);
+  if ((p.grenades[kind] ?? 0) > 0) return;
+  const other = p.grenades.findIndex((n) => n > 0);
+  if (other >= 0) {
+    p.slots[SLOT_GRENADE] = 9 + other;
+    switchTo(p, SLOT_GRENADE);
+    return;
+  }
+  p.slots[SLOT_GRENADE] = -1;
+  switchTo(p, firstUsableSlot(p));
+}
+
+/**
  * Lo que un input hace en el servidor con un jugador: moverse, la acción
- * puntual, el arma y, si disparó, el tiro contra el mundo y los demás.
+ * puntual, el arma y, si disparó, el tiro contra el mundo y los demás (o la
+ * granada que sale de la mano).
  */
 function stepPlayerInput(state: GameState, p: PlayerState, input: PlayerInput, map: GameMap, events: SimEvent[], acting: boolean): void {
   p.lastSeq = input.seq;
@@ -103,7 +128,14 @@ function stepPlayerInput(state: GameState, p: PlayerState, input: PlayerInput, m
   const wasReloading = p.reloading;
   const fired = stepWeaponState(p, input, acting);
   if (!wasReloading && p.reloading) events.push({ t: "reload", byId: p.id, x: p.x, y: p.y, z: p.z });
-  if (fired >= 0) resolveShot(state, p, fired, input.seq, shotRewind(state.tick, input.view), map, events);
+  if (fired < 0) return;
+  const kind = grenadeKind(fired);
+  if (kind >= 0) {
+    throwGrenade(state, p, kind, events, input.seq);
+    afterThrow(p, kind);
+  } else {
+    resolveShot(state, p, fired, input.seq, shotRewind(state.tick, input.view), map, events);
+  }
 }
 
 /**
@@ -130,6 +162,8 @@ export function step(state: GameState, inputs: ReadonlyMap<number, PlayerInput[]
   for (let i = state.drops.length - 1; i >= 0; i--) {
     if (--state.drops[i]!.ticksLeft <= 0) state.drops.splice(i, 1);
   }
+
+  stepGrenades(state, map, events);
 
   for (const p of state.players) if (p.alive) recordTrail(p, state.tick);
 

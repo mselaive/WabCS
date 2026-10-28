@@ -114,7 +114,8 @@ export interface MatchStartMsg {
  * 14 vx, 15 vz (cm/s, para extrapolar al interpolar)
  * --- sólo el propio:
  * 16 ammo0, 17 reserve0, 18 ammo1, 19 reserve1, 20 money, 21 fireCd,
- * 22 reloadCd, 23 drawCd, 24 recoil, 25 vy (cm/s)
+ * 22 reloadCd, 23 drawCd, 24 recoil, 25 vy (cm/s), 26 granadas
+ * (he + flash*4 + humo*16), 27 blindTicks
  */
 export type SnapPlayer = number[];
 
@@ -147,6 +148,12 @@ export const FLAG_SHOOT_HELD = 64;
 /** [id, arma, x, y, z, yaw] (cm y mrad). */
 export type SnapDrop = [number, number, number, number, number, number];
 
+/** [id, tipo, x, y, z, vx, vy, vz] (cm y cm/s). */
+export type SnapGrenade = [number, number, number, number, number, number, number, number];
+
+/** [id, x, y, z, ticks que le quedan]. */
+export type SnapSmoke = [number, number, number, number, number];
+
 /** [id, kills, deaths, vivo, team, daño, dinero]. Público: es la tabla. */
 export type SnapStanding = [number, number, number, number, number, number, number];
 
@@ -167,6 +174,9 @@ export interface SnapshotMsg {
   rd: SnapRound;
   players: SnapPlayer[];
   drops: SnapDrop[];
+  /** Granadas en el aire y humos: sólo cuando hay. */
+  gr?: SnapGrenade[];
+  sm?: SnapSmoke[];
   st: SnapStanding[];
   /** Equipo ganador del partido, o -1. */
   winner: number;

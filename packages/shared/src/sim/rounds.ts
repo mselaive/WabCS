@@ -21,12 +21,13 @@ import type { GameState, PlayerState, SimEvent } from "./types.js";
 /** Le da a alguien lo de arranque: pistola del equipo, cuchillo, sin chaleco. */
 export function giveStartingKit(p: PlayerState): void {
   const pistol = defaultPistol(p.team);
-  p.slots = [-1, pistol, KNIFE];
-  p.ammo = [0, weapon(pistol).mag, 0];
-  p.reserve = [0, weapon(pistol).reserve, 0];
+  p.slots = [-1, pistol, KNIFE, -1];
+  p.ammo = [0, weapon(pistol).mag, 0, 0];
+  p.reserve = [0, weapon(pistol).reserve, 0, 0];
   p.active = SLOT_SECONDARY;
   p.armor = 0;
   p.helmet = false;
+  p.grenades = [0, 0, 0];
 }
 
 /** Arranca el partido: dinero inicial para todos y la primera ronda. */
@@ -67,6 +68,8 @@ export function startRound(state: GameState, map: GameMap, events: SimEvent[]): 
   r.winner = -1;
   r.reason = "";
   state.drops = [];
+  state.grenades = [];
+  state.smokes = [];
 
   for (const team of [TEAM_T, TEAM_CT]) {
     const spawns = map.spawns[team as 0 | 1];
@@ -101,6 +104,7 @@ export function startRound(state: GameState, map: GameMap, events: SimEvent[]): 
       p.recoil = 0;
       p.recoilCool = 0;
       p.scoped = false;
+      p.blindTicks = 0;
       p.diedAtTick = -1;
       p.killerId = -1;
       // Si no tiene nada en la mano (se le fue la principal), que agarre algo.

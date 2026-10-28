@@ -12,9 +12,10 @@ import { mulberry32, wrapAngle } from "../math.js";
 import { segmentClear } from "../map/raycast.js";
 import type { GameMap } from "../map/types.js";
 import { BUY_ITEMS, SLOT_KNIFE, SLOT_PRIMARY, SLOT_SECONDARY, weapon } from "../weapons.js";
+import { smokeBlocks } from "./grenade.js";
 import { eyeHeightOf, heightOf } from "./movement.js";
 import { findPath, navGridFor, randomWalkableIn } from "./nav.js";
-import type { GameState, PlayerInput, PlayerState } from "./types.js";
+import type { GameState, PlayerInput, PlayerState, SmokeState } from "./types.js";
 
 /**
  * Qué tan bueno es un bot. `react` son los ticks que tarda en empezar a
@@ -109,7 +110,9 @@ function blank(seq: number, yaw: number, pitch: number): PlayerInput {
 }
 
 /** ¿El bot ve a `q`? De sus ojos al pecho o la cabeza, dentro de su campo de visión y alcance. */
-function canSee(me: PlayerState, q: PlayerState, map: GameMap, skill: BotSkill, yaw: number): boolean {
+function canSee(me: PlayerState, q: PlayerState, map: GameMap, skill: BotSkill, yaw: number, smokes: readonly SmokeState[]): boolean {
+  // Ciego por una flash no ve nada.
+  if (me.blindTicks > 0) return false;
   const dx = q.x - me.x;
   const dz = q.z - me.z;
   const dist = Math.hypot(dx, dz);
@@ -120,11 +123,9 @@ function canSee(me: PlayerState, q: PlayerState, map: GameMap, skill: BotSkill, 
   const ey = me.y + eyeHeightOf(me);
   const ez = me.z;
   const h = heightOf(q);
-  return (
-    segmentClear(ex, ey, ez, q.x, q.y + h * 0.55, q.z, map.boxes) ||
-    segmentClear(ex, ey, ez, q.x, q.y + h - 0.15, q.z, map.boxes) ||
-    segmentClear(ex, ey, ez, q.x, q.y + 0.3, q.z, map.boxes)
-  );
+  const clear = (ty: number) =>
+    segmentClear(ex, ey, ez, q.x, q.y + ty, q.z, map.boxes) && !smokeBlocks(smokes, ex, ey, ez, q.x, q.y + ty, q.z);
+  return clear(h * 0.55) || clear(h - 0.15) || clear(0.3);
 }
 
 /** Qué comprar con lo que hay. Devuelve el índice en BUY_ITEMS o -1. */
@@ -184,7 +185,7 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
   for (const q of state.players) {
     if (q === me || !q.alive || !q.connected || q.team === me.team) continue;
     const d = Math.hypot(q.x - me.x, q.z - me.z);
-    if (d < bestD && canSee(me, q, map, skill, mem.yaw)) {
+    if (d < bestD && canSee(me, q, map, skill, mem.yaw, state.smokes)) {
       bestD = d;
       target = q;
     }

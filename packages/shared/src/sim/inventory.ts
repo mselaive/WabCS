@@ -1,7 +1,7 @@
-import { BUY_RADIUS, BUY_TICKS, DROP_TICKS, PICKUP_RANGE, ROUND_TICKS } from "../constants.js";
+import { BUY_RADIUS, BUY_TICKS, DROP_TICKS, GRENADE_MAX, PICKUP_RANGE, ROUND_TICKS } from "../constants.js";
 import { distXZ } from "../math.js";
 import type { GameMap } from "../map/types.js";
-import { BUY_ITEMS, KNIFE, SLOT_KNIFE, weapon } from "../weapons.js";
+import { BUY_ITEMS, KNIFE, SLOT_GRENADE, SLOT_KNIFE, weapon } from "../weapons.js";
 import type { DropState, GameState, PlayerState, SimEvent } from "./types.js";
 
 /** Más que esto tirado en el piso y se borra lo más viejo. */
@@ -45,6 +45,16 @@ export function tryBuy(state: GameState, p: PlayerState, index: number, map: Gam
     p.money -= price;
     p.armor = 100;
     if (item.armor === "helmet") p.helmet = true;
+    events.push({ t: "buy", byId: p.id, item: index });
+    return true;
+  }
+
+  if (item.grenade !== undefined) {
+    const kind = item.grenade;
+    if ((p.grenades[kind] ?? 0) >= (GRENADE_MAX[kind] ?? 1)) return false;
+    if (p.money < item.price) return false;
+    p.money -= item.price;
+    p.grenades[kind] = (p.grenades[kind] ?? 0) + 1;
     events.push({ t: "buy", byId: p.id, item: index });
     return true;
   }
@@ -111,7 +121,7 @@ export function dropWeaponAt(state: GameState, p: PlayerState, slot: number, map
 
 /** Tira el arma que tiene en la mano (no el cuchillo). */
 export function dropActive(state: GameState, p: PlayerState, map: GameMap, events: SimEvent[]): boolean {
-  if (!p.alive || p.active === SLOT_KNIFE) return false;
+  if (!p.alive || p.active === SLOT_KNIFE || p.active === SLOT_GRENADE) return false;
   const wid = p.slots[p.active] ?? -1;
   if (wid < 0) return false;
   dropWeaponAt(state, p, p.active, map, 0);

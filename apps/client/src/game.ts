@@ -28,6 +28,7 @@ import {
   ZONE_HEAD,
   distXZ,
   eyeHeightOf,
+  grenadeKind,
   heightOf,
   mapByIndex,
   rayAabb,
@@ -120,6 +121,9 @@ export class Game {
   private prevYaw = 0;
   private prevPitch = 0;
   private prevShoot = false;
+  /** Una flash que acaba de estallar: con el próximo snapshot se sabe cuánto me cegó. */
+  private pendingFlash: { x: number; z: number; at: number } | null = null;
+  private blindMax = 0;
 
   constructor(private readonly ui: UI) {}
 
@@ -408,6 +412,13 @@ export class Game {
         } else {
           this.predictor.reconcile(me, this.map, this.canActNow);
         }
+        // La flash: el servidor dice cuánto quedé ciego.
+        if (this.pendingFlash && me.own) {
+          const seconds = me.own.blindTicks / 20;
+          this.audio.flashbang(this.pendingFlash.x, this.pendingFlash.z, seconds);
+          if (me.own.blindTicks > 0) this.blindMax = Math.max(this.blindMax, me.own.blindTicks);
+          this.pendingFlash = null;
+        }
       }
       for (const ev of msg.ev ?? []) this.onEvent(ev);
     }
@@ -504,6 +515,25 @@ export class Game {
       case "steps":
         this.audio.step(ev.x, ev.z);
         return;
+      case "throw": {
+        const who = this.buffer.latest?.players.get(ev.byId);
+        if (ev.byId !== this.myId && who) this.audio.throwNade(who.x, who.z);
+        return;
+      }
+      case "explode": {
+        const at = new THREE.Vector3(ev.x, ev.y, ev.z);
+        if (ev.kind === 0) {
+          this.effects.explosion(at);
+          this.audio.explosion(ev.x, ev.z);
+        } else if (ev.kind === 1) {
+          this.effects.flash(at, 40);
+          // Cuánto me cegó lo dice el próximo snapshot; el pitido arranca con eso.
+          this.pendingFlash = { x: ev.x, z: ev.z, at: performance.now() };
+        } else {
+          this.audio.smoke(ev.x, ev.z);
+        }
+        return;
+      }
     }
   }
 
@@ -634,9 +664,10 @@ export class Game {
   private onUiKey(e: KeyboardEvent): void {
     if (!this.ui.isBuyOpen) return;
     if (e.code.startsWith("Digit")) {
-      const d = Number(e.code.slice(5));
-      if (d >= 1 && d <= 9) this.ui.buyByKey(d);
+      this.ui.buyByKey(e.code.slice(5));
       e.preventDefault();
+    } else if (e.code === "KeyC") {
+      this.ui.buyByKey("C");
     } else if (e.code === "Escape") {
       this.ui.closeBuy();
     }
@@ -663,6 +694,8 @@ export class Game {
       this.lastInterp = frame;
       this.updateOthers(frame, dt);
       this.world.updateDrops(frame.drops);
+      this.world.updateGrenades(frame.grenades, dt);
+      this.world.updateSmokes(frame.smokes, dt);
       this.updateRoundHud(frame.round);
     }
 
@@ -746,11 +779,16 @@ export class Game {
       this.input.scoped = s.scoped;
       this.applyFov(s.scoped ? FOV_SCOPED : FOV, dt);
       this.ui.setScope(s.scoped);
-      this.ui.setCrosshair(!s.scoped && weapon(wid).melee === 0, spreadOf(s, weapon(wid), s.recoil));
+      this.ui.setCrosshair(!s.scoped && weapon(wid).melee === 0 && grenadeKind(wid) < 0, spreadOf(s, weapon(wid), s.recoil));
 
       this.ui.setVitals(s.hp, s.armor, s.helmet);
       this.ui.setMoney(s.money);
-      this.ui.setAmmo(wid, s.ammo[s.active] ?? 0, s.reserve[s.active] ?? 0, s.slots, s.active);
+      const held = grenadeKind(wid);
+      this.ui.setAmmo(wid, held >= 0 ? (s.grenades[held] ?? 0) : (s.ammo[s.active] ?? 0), s.reserve[s.active] ?? 0, s.slots, s.active);
+      this.ui.setGrenades(s.grenades, held);
+      // Ciego: blanco que se va yendo con los ticks que quedan.
+      if (s.blindTicks <= 0) this.blindMax = 0;
+      this.ui.setBlind(this.blindMax > 0 ? Math.min(1, (s.blindTicks / this.blindMax) * 1.3) : 0);
       if (this.ui.isBuyOpen) this.ui.renderBuy(s.team, s.money);
       this.ui.setPickupPrompt(frame ? nearestDropWeapon(frame.drops, s.x, s.y, s.z) : null);
       this.ui.setSpectating(null);
@@ -759,6 +797,7 @@ export class Game {
       this.viewModel.setHidden(true);
       this.ui.setScope(false);
       this.ui.setCrosshair(false, 0);
+      this.ui.setBlind(0);
       this.ui.setFreezeInfo(null);
       this.ui.setPickupPrompt(null);
       this.applyFov(FOV, dt);
@@ -815,6 +854,10 @@ export class Game {
     const s = this.predictor!.state;
     const w = weapon(shot.weapon);
     this.viewModel.fire();
+    if (grenadeKind(shot.weapon) >= 0) {
+      this.audio.throwNade(null, null);
+      return;
+    }
     this.audio.shot(shot.weapon, null, null);
     if (w.melee > 0) return;
     // La cámara salta hacia donde se fue la bala: se ve el patrón y se aprende.

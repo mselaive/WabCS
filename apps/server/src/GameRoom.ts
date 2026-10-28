@@ -34,6 +34,9 @@ import {
   mapByIndex,
   navGridFor,
   packDrop,
+  packGrenade,
+  packSmoke,
+  smokeBlocks,
   packPlayer,
   packRound,
   packStandings,
@@ -581,14 +584,17 @@ export class GameRoom extends Server<Env> {
     const ez = viewer.z;
     const h = heightOf(target);
     const boxes = this.map.boxes;
+    const smokes = this.state.smokes;
+    // Una pared tapa, y el humo también (las balas no, pero la vista sí).
+    const clear = (tx: number, ty: number, tz: number) => segmentClear(ex, ey, ez, tx, ty, tz, boxes) && !smokeBlocks(smokes, ex, ey, ez, tx, ty, tz);
     const visible =
-      segmentClear(ex, ey, ez, target.x, target.y + h - 0.15, target.z, boxes) ||
-      segmentClear(ex, ey, ez, target.x, target.y + h * 0.5, target.z, boxes) ||
-      segmentClear(ex, ey, ez, target.x, target.y + 0.2, target.z, boxes) ||
-      segmentClear(ex, ey, ez, target.x + 0.3, target.y + h * 0.7, target.z, boxes) ||
-      segmentClear(ex, ey, ez, target.x - 0.3, target.y + h * 0.7, target.z, boxes) ||
-      segmentClear(ex, ey, ez, target.x, target.y + h * 0.7, target.z + 0.3, boxes) ||
-      segmentClear(ex, ey, ez, target.x, target.y + h * 0.7, target.z - 0.3, boxes);
+      clear(target.x, target.y + h - 0.15, target.z) ||
+      clear(target.x, target.y + h * 0.5, target.z) ||
+      clear(target.x, target.y + 0.2, target.z) ||
+      clear(target.x + 0.3, target.y + h * 0.7, target.z) ||
+      clear(target.x - 0.3, target.y + h * 0.7, target.z) ||
+      clear(target.x, target.y + h * 0.7, target.z + 0.3) ||
+      clear(target.x, target.y + h * 0.7, target.z - 0.3);
     if (visible) {
       seen.set(target.id, this.state.tick);
       return true;
@@ -611,6 +617,9 @@ export class GameRoom extends Server<Env> {
       left: s.phaseTicksLeft,
       rd: packRound(s),
       drops: s.drops.map(packDrop),
+      // Las granadas y los humos se ven desde todos lados: se oyen y se huelen.
+      ...(s.grenades.length > 0 ? { gr: s.grenades.map(packGrenade) } : {}),
+      ...(s.smokes.length > 0 ? { sm: s.smokes.map(packSmoke) } : {}),
       st: packStandings(s),
       winner: s.winnerTeam,
     };
@@ -686,6 +695,12 @@ export class GameRoom extends Server<Env> {
         case "reload": {
           const who = findPlayer(this.state, e.byId);
           if (who && (who.team === viewer.team || Math.hypot(e.x - ex, e.z - ez) <= STEPS_RANGE)) out.push(e);
+          break;
+        }
+        case "throw": {
+          // El propio siempre (empareja la predicción); el de un rival, si se lo ve.
+          const who = findPlayer(this.state, e.byId);
+          if (e.byId === viewerId || (who && (who.team === viewer.team || this.canSee(viewer, who)))) out.push(e);
           break;
         }
         default:

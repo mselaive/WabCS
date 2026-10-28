@@ -1,9 +1,13 @@
 import { TEAM_CT, TEAM_T } from "./constants.js";
 
-/** Ranuras: 0 principal (rifles, subfusil, escopeta, francotirador), 1 pistola, 2 cuchillo. */
+/**
+ * Ranuras: 0 principal (rifles, subfusil, escopeta, francotirador), 1 pistola,
+ * 2 cuchillo, 3 la granada que se tiene en la mano (las cantidades van aparte).
+ */
 export const SLOT_PRIMARY = 0;
 export const SLOT_SECONDARY = 1;
 export const SLOT_KNIFE = 2;
+export const SLOT_GRENADE = 3;
 
 export interface WeaponDef {
   id: number;
@@ -101,7 +105,34 @@ export const WEAPONS: readonly WeaponDef[] = [
     damage: 115, range: 0.99, pen: 0.975, mag: 5, reserve: 30, fireTicks: 30, reloadTicks: 74, drawTicks: 12,
     auto: false, pellets: 1, spread: 0.09, spreadShot: 0.02, spreadMove: 0.08, speed: 4.0, zoom: 4, kick: 0.06, recoilUp: 0.02, recoilSide: 0.0, melee: 0,
   }),
+  // Las granadas: "disparar" es tirarla. El daño de la HE está en HE_DAMAGE.
+  W({
+    id: 9, name: "Granada HE", short: "HE", slot: SLOT_GRENADE, price: 300, team: -1,
+    damage: 0, range: 1, pen: 0.5, mag: 0, reserve: 0, fireTicks: 16, reloadTicks: 0, drawTicks: 8,
+    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0,
+  }),
+  W({
+    id: 10, name: "Flash", short: "Flash", slot: SLOT_GRENADE, price: 200, team: -1,
+    damage: 0, range: 1, pen: 0.5, mag: 0, reserve: 0, fireTicks: 16, reloadTicks: 0, drawTicks: 8,
+    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0,
+  }),
+  W({
+    id: 11, name: "Humo", short: "Humo", slot: SLOT_GRENADE, price: 300, team: -1,
+    damage: 0, range: 1, pen: 0.5, mag: 0, reserve: 0, fireTicks: 16, reloadTicks: 0, drawTicks: 8,
+    auto: false, pellets: 1, spread: 0, spreadShot: 0, spreadMove: 0, speed: 5.0, zoom: 0, kick: 0, recoilUp: 0, recoilSide: 0, melee: 0,
+  }),
 ];
+
+export const HE_GRENADE = 9;
+export const FLASHBANG = 10;
+export const SMOKE_GRENADE = 11;
+/** Tipo de granada (0 HE, 1 flash, 2 humo) a partir del id del arma, o -1. */
+export function grenadeKind(id: number): number {
+  return id >= HE_GRENADE && id <= SMOKE_GRENADE ? id - HE_GRENADE : -1;
+}
+export function isGrenade(id: number): boolean {
+  return grenadeKind(id) >= 0;
+}
 
 export const KNIFE = 0;
 export const GLOCK = 1;
@@ -132,6 +163,8 @@ export interface BuyItem {
   /** -1 para todos; si no, sólo ese equipo. */
   team: number;
   armor?: "kevlar" | "helmet";
+  /** Una granada: el tipo (0 HE, 1 flash, 2 humo). */
+  grenade?: number;
 }
 
 export const BUY_ITEMS: readonly BuyItem[] = [
@@ -145,6 +178,9 @@ export const BUY_ITEMS: readonly BuyItem[] = [
   { key: "awp", name: "AWP", price: 4750, weapon: AWP, team: -1 },
   { key: "kevlar", name: "Chaleco", price: 650, weapon: -1, team: -1, armor: "kevlar" },
   { key: "helmet", name: "Chaleco y casco", price: 1000, weapon: -1, team: -1, armor: "helmet" },
+  { key: "he", name: "Granada HE", price: 300, weapon: -1, team: -1, grenade: 0 },
+  { key: "flash", name: "Flash", price: 200, weapon: -1, team: -1, grenade: 1 },
+  { key: "smoke", name: "Humo", price: 300, weapon: -1, team: -1, grenade: 2 },
 ];
 
 export function buyItemIndex(key: string): number {

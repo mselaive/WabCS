@@ -120,6 +120,19 @@ export class Effects {
     while (this.shells.length > 30) this.group.remove(this.shells.shift()!.mesh);
   }
 
+  /** Una explosión de HE: luz fuerte, bola de fuego, polvo y chispas. */
+  explosion(at: THREE.Vector3): void {
+    this.flash(at, 60);
+    for (let i = 0; i < 6; i++) {
+      const j = at.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.2, Math.random() * 0.8, (Math.random() - 0.5) * 1.2));
+      this.puff(j, this.sparkMat, 0.9 + Math.random() * 0.8, 0.25, 1.5, 3);
+    }
+    for (let i = 0; i < 10; i++) {
+      const j = at.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 1.2, (Math.random() - 0.5) * 2));
+      this.puff(j, this.dustMat, 0.8 + Math.random() * 1.2, 1.2 + Math.random() * 0.8, 0.8, 0.9);
+    }
+  }
+
   /** La luz del fogonazo, un instante, en `at`. */
   flash(at: THREE.Vector3, intensity = 14): void {
     const f = this.flashes.reduce((a, b) => (a.life <= b.life ? a : b));

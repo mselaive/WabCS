@@ -101,6 +101,30 @@ export const LOSS_MAX_STREAK = 4;
 export const WIN_ROUNDS_OPTIONS = [5, 8, 13] as const;
 export const DEFAULT_WIN_ROUNDS = 8;
 
+// ------------------------------------------------------------ granadas
+
+/** Mecha de la HE y la flash desde que salen de la mano. */
+export const GRENADE_FUSE_TICKS = 32;
+/** El humo tarda esto en estallar y después dura SMOKE_TICKS. */
+export const SMOKE_FUSE_TICKS = 30;
+export const SMOKE_TICKS = 15 * TICK_RATE;
+/** Radio de la nube de humo. */
+export const SMOKE_RADIUS = 3;
+/** Con qué velocidad sale una granada de la mano (m/s), y cuánto rebota (0 a 1). */
+export const GRENADE_THROW_SPEED = 17;
+export const GRENADE_BOUNCE = 0.45;
+export const GRENADE_RADIUS = 0.08;
+/** La HE: daño en el centro y hasta dónde llega (cae lineal, y una pared la frena). */
+export const HE_DAMAGE = 98;
+export const HE_RADIUS = 7;
+/** La flash: hasta dónde ciega, y cuánto (ticks) de frente, de costado y de espaldas. */
+export const FLASH_RANGE = 28;
+export const FLASH_FULL_TICKS = 3.6 * TICK_RATE;
+export const FLASH_SIDE_TICKS = 1.6 * TICK_RATE;
+export const FLASH_BACK_TICKS = 0.5 * TICK_RATE;
+/** Cuántas se pueden llevar de cada una: [HE, flash, humo]. */
+export const GRENADE_MAX = [1, 2, 1] as const;
+
 /** Hasta dónde se recoge un arma del piso. */
 export const PICKUP_RANGE = 1.8;
 /** Cuánto vive un arma tirada (ticks). Al terminar la ronda se limpian todas. */
@@ -123,6 +147,8 @@ export const ACT_SLOT_1 = 2;
 export const ACT_SLOT_2 = 3;
 export const ACT_PICKUP = 4;
 export const ACT_DROP = 5;
+/** ACT_GRENADE_BASE + tipo (0 HE, 1 flash, 2 humo): sacar esa granada. */
+export const ACT_GRENADE_BASE = 6;
 /** ACT_BUY_BASE + índice en BUY_ITEMS. */
 export const ACT_BUY_BASE = 16;
 
