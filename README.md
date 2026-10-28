@@ -74,8 +74,9 @@ con `--manso` no disparan, para probar tus tiros tranquilo.
 | `Espacio` | saltar |
 | `R` | recargar |
 | `1` / `2` / `3` | principal, pistola, cuchillo |
+| `4` / `5` / `6` | granada HE, flash, humo (click para tirarla) |
 | `Q` | la última arma que tenías |
-| `B` | menú de compra (en el tiempo de compra y los primeros 10 s, cerca de tu spawn) |
+| `B` | menú de compra: `1`-`6` armas, `7`-`9` granadas, `0` chaleco, `C` casco (en el tiempo de compra y los primeros 10 s, cerca de tu spawn) |
 | `E` | levantar el arma del piso que tengas adelante |
 | `G` | tirar el arma que tenés en la mano |
 | `Tab` | tabla |
@@ -127,6 +128,19 @@ cualquiera las levanta con `E` (y las propias se tiran con `G`, para pasarle el 
 | AWP | $4750 | 115 | 5 + 30 | 1/1,5 s | mata de un tiro al cuerpo; sin la mira es una moneda al aire |
 | Chaleco | $650 | | | | 100 de chaleco |
 | Chaleco y casco | $1000 | | | | sólo el casco, $350, si ya tenés el chaleco entero |
+| Granada HE | $300 | 98 | 1 | | estalla a los 1,6 s; el daño cae con la distancia y una pared lo frena |
+| Flash | $200 | | 2 | | ciega al que la ve: hasta 3,6 s de frente, menos de costado y de lejos |
+| Humo | $300 | | 1 | | 15 s de nube de 3 m que tapa la vista (no las balas) |
+
+### Granadas
+
+Con `4`, `5` y `6` se saca la HE, la flash o el humo; click para tirarla. Sale de los ojos hacia
+donde mirás, un poco hacia arriba, vuela con gravedad y rebota contra todo (`sim/grenade.ts`):
+contra una pared de cerca te vuelve a los pies, así que ojo. La HE lastima también al que la tira
+(a los compañeros no). La flash mira el ángulo entre tu vista y la granada: de frente es el
+máximo, de espaldas casi nada; además una pared la tapa. El humo es de verdad una nube para el
+servidor: los rivales detrás no te llegan en el snapshot (ni vos a ellos), y los bots tampoco
+ven a través.
 
 El daño cae con la distancia (cada arma a su ritmo: la escopeta pierde la mitad cada 10 m, el AK
 casi nada) y según dónde pega: **cabeza ×4**, cuerpo ×1, piernas ×0,75. El chaleco absorbe parte
@@ -217,6 +231,7 @@ packages/shared/     simulación, mapa y protocolo (TS puro, sin dependencias)
   src/sim/movement.ts  moverse: fricción, salto, agacharse, escalones, colisiones
   src/sim/combat.ts    el arma, la dispersión, el retroceso, el tiro y el daño
   src/sim/inventory.ts comprar, tirar y levantar
+  src/sim/grenade.ts   las granadas: física, HE, flash y humo
   src/sim/rounds.ts    rondas, economía, cambio de lado, fin del partido
   src/sim/step.ts      el tick autoritativo
   src/sim/nav.ts       la grilla de caminos y el A* de los bots
@@ -291,4 +306,4 @@ rechaza las que no coinciden con "Hay una versión nueva del juego: recargá la 
 
 ## Lo que falta
 
-Está en [IDEAS.md](IDEAS.md): granadas, modo bomba, más mapas, teléfono.
+Está en [IDEAS.md](IDEAS.md): modo bomba, más mapas, bots que tiren granadas y suban a los techos, teléfono.
