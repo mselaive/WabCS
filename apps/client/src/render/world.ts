@@ -5,8 +5,21 @@ import { TEX_COUNT, type Box, type GameMap, type UnpackedDrop } from "@wabcs/sha
 import { makeAllMaterials } from "./textures.js";
 import { buildWeaponMesh } from "./viewmodel.js";
 
+/** Un cilindro vertical inscripto en la caja (barriles), con los UV en metros. */
+function cylinderGeometry(b: Box): THREE.BufferGeometry {
+  const r = Math.min(b.maxX - b.minX, b.maxZ - b.minZ) / 2;
+  const h = b.maxY - b.minY;
+  const g = new THREE.CylinderGeometry(r, r, h, 18, 1);
+  g.translate((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2);
+  const uv = g.getAttribute("uv") as THREE.BufferAttribute;
+  const around = Math.PI * 2 * r;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * around, uv.getY(i) * h);
+  return g;
+}
+
 /** Una caja del mapa como geometría con los UV escalados a metros. */
 function boxGeometry(b: Box): THREE.BufferGeometry {
+  if (b.shape === "cyl") return cylinderGeometry(b);
   const w = b.maxX - b.minX;
   const h = b.maxY - b.minY;
   const d = b.maxZ - b.minZ;

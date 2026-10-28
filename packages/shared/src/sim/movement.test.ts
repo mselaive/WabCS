@@ -35,9 +35,9 @@ function spawn(x: number, z: number) {
 describe("movimiento", () => {
   it("camina hacia adelante a la velocidad del arma y frena al soltar", () => {
     const p = spawn(0, 12);
-    for (let i = 0; i < 20; i++) stepPlayerMovement(p, input({ fwd: 1 }), BODEGA, true);
-    // yaw 0 mira a -Z: se aleja del spawn T hacia el centro.
-    expect(p.z).toBeLessThan(8);
+    for (let i = 0; i < 12; i++) stepPlayerMovement(p, input({ fwd: 1 }), BODEGA, true);
+    // yaw 0 mira a -Z: se aleja del spawn T hacia el portón (los sacos están en z 6,6).
+    expect(p.z).toBeLessThan(9.5);
     expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(4.5);
     for (let i = 0; i < 10; i++) stepPlayerMovement(p, input(), BODEGA, true);
     expect(Math.hypot(p.vx, p.vz)).toBeLessThan(0.1);

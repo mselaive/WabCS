@@ -17,6 +17,12 @@ export interface Box {
    * color del piso). El cliente la levanta unos milímetros para que no parpadee.
    */
   decal?: boolean;
+  /**
+   * Cómo se dibuja: una caja, o un cilindro vertical inscripto en ella (los
+   * barriles). La colisión y las balas siguen usando la caja: en un barril de
+   * 60 cm la diferencia en las esquinas es de 12 cm y no se nota.
+   */
+  shape?: "box" | "cyl";
 }
 
 export interface Spawn {
@@ -40,7 +46,7 @@ export interface GameMap {
   sky: number;
 }
 
-/** Texturas de prototipo: cada una es un color con grilla, generada por código. */
+/** Texturas: cada una se genera por código en el cliente (render/textures.ts). */
 export const TEX_FLOOR = 0;
 export const TEX_WALL = 1;
 export const TEX_CRATE = 2;
@@ -50,4 +56,11 @@ export const TEX_CT = 5;
 export const TEX_CONCRETE = 6;
 export const TEX_WOOD = 7;
 export const TEX_ROOF = 8;
-export const TEX_COUNT = 9;
+export const TEX_ASPHALT = 9;
+export const TEX_BRICK = 10;
+export const TEX_PLASTER = 11;
+export const TEX_CONTAINER_BLUE = 12;
+export const TEX_CONTAINER_RED = 13;
+export const TEX_SANDBAG = 14;
+export const TEX_BARREL = 15;
+export const TEX_COUNT = 16;

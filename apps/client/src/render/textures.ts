@@ -1,23 +1,30 @@
 import * as THREE from "three";
 import {
+  TEX_ASPHALT,
+  TEX_BARREL,
+  TEX_BRICK,
   TEX_CONCRETE,
+  TEX_CONTAINER_BLUE,
+  TEX_CONTAINER_RED,
   TEX_COUNT,
   TEX_CRATE,
   TEX_CT,
   TEX_FLOOR,
   TEX_METAL,
+  TEX_PLASTER,
   TEX_ROOF,
+  TEX_SANDBAG,
   TEX_T,
   TEX_WALL,
   TEX_WOOD,
 } from "@wabcs/shared";
 
 /**
- * Texturas "de prototipo", generadas por código: un color plano con una grilla
- * de 1 m y una más fina de 25 cm, como las de los kits de prototipado (Kenney,
- * dev_textures), con un bisel en cada baldosa y un poco de ruido y manchas
- * para que no se vea plano. Un tile = 1 m del mundo: la geometría escala los
- * UV por el tamaño de cada cara, así la grilla mide lo mismo en todas partes.
+ * Texturas generadas por código: nada que descargar. Un tile = 1 m del
+ * mundo: la geometría escala los UV por el tamaño de cada cara, así la grilla
+ * mide lo mismo en todas partes. Cada estilo es un color con un dibujo
+ * (baldosas, ladrillos, planchas, chapa acanalada, sacos) más ruido, manchas
+ * y un bisel, para que no se vea plano.
  */
 
 const SIZE = 512;
@@ -26,11 +33,8 @@ interface Style {
   base: string;
   line: string;
   fine: string;
-  /** Un dibujo extra por tile: planchas, remaches, baldosas, nada. */
-  deco?: "planks" | "rivets" | "tiles" | "stripes" | "bricks";
-  /** Cuánto se nota el bisel de las baldosas. */
+  deco?: "planks" | "rivets" | "tiles" | "stripes" | "bricks" | "asphalt" | "plaster" | "ribs" | "sacks" | "barrel";
   bevel: number;
-  /** Manchas y desgaste. */
   grime: number;
 }
 
@@ -42,8 +46,15 @@ const STYLES: Record<number, Style> = {
   [TEX_T]: { base: "#d3773f", line: "#9b5125", fine: "#c86f38", deco: "stripes", bevel: 0.2, grime: 0.2 },
   [TEX_CT]: { base: "#4f7fb3", line: "#2f5478", fine: "#4876a8", deco: "stripes", bevel: 0.2, grime: 0.2 },
   [TEX_CONCRETE]: { base: "#a2a9af", line: "#767e85", fine: "#989fa5", bevel: 0.4, grime: 0.6 },
-  [TEX_WOOD]: { base: "#c69a66", line: "#84603a", fine: "#b88d5a", deco: "planks", bevel: 0.25, grime: 0.4 },
+  [TEX_WOOD]: { base: "#c69a66", line: "#84603a", fine: "#b58a56", deco: "planks", bevel: 0.25, grime: 0.4 },
   [TEX_ROOF]: { base: "#5d636b", line: "#3b4046", fine: "#565c63", deco: "tiles", bevel: 0.4, grime: 0.5 },
+  [TEX_ASPHALT]: { base: "#4e5257", line: "#34373b", fine: "#4a4d51", deco: "asphalt", bevel: 0, grime: 0.9 },
+  [TEX_BRICK]: { base: "#9c5a44", line: "#5e3326", fine: "#8e5240", deco: "bricks", bevel: 0.5, grime: 0.6 },
+  [TEX_PLASTER]: { base: "#d9d2bf", line: "#a69c86", fine: "#cfc7b3", deco: "plaster", bevel: 0.15, grime: 0.9 },
+  [TEX_CONTAINER_BLUE]: { base: "#3b6a9c", line: "#22405f", fine: "#366190", deco: "ribs", bevel: 0.3, grime: 0.7 },
+  [TEX_CONTAINER_RED]: { base: "#a9443a", line: "#5f2420", fine: "#9d3f36", deco: "ribs", bevel: 0.3, grime: 0.7 },
+  [TEX_SANDBAG]: { base: "#b5a36f", line: "#7a6b45", fine: "#a99761", deco: "sacks", bevel: 0.2, grime: 0.6 },
+  [TEX_BARREL]: { base: "#8a4a2c", line: "#4a2715", fine: "#7f4428", deco: "barrel", bevel: 0.3, grime: 0.9 },
 };
 
 let seed = 12345;
@@ -81,6 +92,7 @@ function grime(ctx: CanvasRenderingContext2D, amount: number): void {
 
 /** Un bisel en cada baldosa: luz arriba y a la izquierda, sombra abajo y a la derecha. */
 function bevel(ctx: CanvasRenderingContext2D, cells: number, strength: number): void {
+  if (strength <= 0) return;
   const s = SIZE / cells;
   for (let i = 0; i < cells; i++) {
     for (let j = 0; j < cells; j++) {
@@ -96,6 +108,37 @@ function bevel(ctx: CanvasRenderingContext2D, cells: number, strength: number): 
   }
 }
 
+/** Hiladas de ladrillos, corridas media pieza por fila, con la junta oscura. */
+function bricks(ctx: CanvasRenderingContext2D, rows: number, perRow: number, style: Style): void {
+  const h = SIZE / rows;
+  const w = SIZE / perRow;
+  ctx.fillStyle = style.line;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+  for (let r = 0; r < rows; r++) {
+    const off = r % 2 === 0 ? 0 : w / 2;
+    for (let c = -1; c <= perRow; c++) {
+      const x = c * w + off + 3;
+      const y = r * h + 3;
+      // Cada ladrillo con su tono.
+      const tint = (rnd() - 0.5) * 30;
+      ctx.fillStyle = shade(style.base, tint);
+      ctx.fillRect(x, y, w - 6, h - 6);
+      ctx.fillStyle = `rgba(255,255,255,${0.18 * style.bevel})`;
+      ctx.fillRect(x, y, w - 6, 2);
+      ctx.fillStyle = `rgba(0,0,0,${0.25 * style.bevel})`;
+      ctx.fillRect(x, y + h - 8, w - 6, 2);
+    }
+  }
+}
+
+function shade(hex: string, delta: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.min(255, (n >> 16) + delta));
+  const g = Math.max(0, Math.min(255, ((n >> 8) & 255) + delta));
+  const b = Math.max(0, Math.min(255, (n & 255) + delta));
+  return `rgb(${r},${g},${b})`;
+}
+
 export function makeTexture(tex: number): THREE.Texture {
   const style = STYLES[tex] ?? STYLES[TEX_CONCRETE]!;
   const canvas = document.createElement("canvas");
@@ -106,11 +149,16 @@ export function makeTexture(tex: number): THREE.Texture {
 
   ctx.fillStyle = style.base;
   ctx.fillRect(0, 0, SIZE, SIZE);
-  noise(ctx, 18);
-  grime(ctx, style.grime);
 
   switch (style.deco) {
+    case "bricks":
+      bricks(ctx, tex === TEX_BRICK ? 8 : 4, tex === TEX_BRICK ? 4 : 2, style);
+      noise(ctx, 14);
+      grime(ctx, style.grime);
+      break;
     case "planks": {
+      noise(ctx, 18);
+      grime(ctx, style.grime);
       ctx.strokeStyle = style.line;
       ctx.lineWidth = 4;
       for (let i = 0; i < 4; i++) {
@@ -120,7 +168,6 @@ export function makeTexture(tex: number): THREE.Texture {
         ctx.lineTo(SIZE, y);
         ctx.stroke();
       }
-      // Vetas de la madera.
       ctx.strokeStyle = "rgba(0,0,0,0.08)";
       ctx.lineWidth = 2;
       for (let i = 0; i < 40; i++) {
@@ -130,7 +177,6 @@ export function makeTexture(tex: number): THREE.Texture {
         ctx.bezierCurveTo(SIZE / 3, y + (rnd() - 0.5) * 12, (SIZE * 2) / 3, y + (rnd() - 0.5) * 12, SIZE, y);
         ctx.stroke();
       }
-      // Clavos.
       ctx.fillStyle = style.line;
       for (let i = 0; i < 4; i++) {
         const y = (SIZE / 4) * i + SIZE / 8;
@@ -141,6 +187,8 @@ export function makeTexture(tex: number): THREE.Texture {
       break;
     }
     case "rivets": {
+      noise(ctx, 18);
+      grime(ctx, style.grime);
       bevel(ctx, 2, style.bevel);
       ctx.fillStyle = style.line;
       for (const x of [22, SIZE / 2 - 4, SIZE - 30]) for (const y of [22, SIZE / 2 - 4, SIZE - 30]) ctx.fillRect(x, y, 8, 8);
@@ -149,32 +197,15 @@ export function makeTexture(tex: number): THREE.Texture {
       break;
     }
     case "tiles": {
+      noise(ctx, 18);
+      grime(ctx, style.grime);
       bevel(ctx, 4, style.bevel);
       ctx.fillStyle = style.line;
       ctx.fillRect(SIZE / 2 - 4, SIZE / 2 - 4, 8, 8);
       break;
     }
-    case "bricks": {
-      // Hiladas de ladrillos grandes, corridas media pieza por fila.
-      const rows = 4;
-      const h = SIZE / rows;
-      const w = SIZE / 2;
-      for (let r = 0; r < rows; r++) {
-        const off = r % 2 === 0 ? 0 : w / 2;
-        for (let c = -1; c < 3; c++) {
-          const x = c * w + off;
-          const y = r * h;
-          ctx.fillStyle = `rgba(255,255,255,${0.2 * style.bevel})`;
-          ctx.fillRect(x, y, w, 3);
-          ctx.fillRect(x, y, 3, h);
-          ctx.fillStyle = `rgba(0,0,0,${0.3 * style.bevel})`;
-          ctx.fillRect(x, y + h - 4, w, 4);
-          ctx.fillRect(x + w - 4, y, 4, h);
-        }
-      }
-      break;
-    }
     case "stripes": {
+      noise(ctx, 18);
       ctx.strokeStyle = "rgba(255,255,255,0.18)";
       ctx.lineWidth = 18;
       for (let i = -SIZE; i < SIZE * 2; i += 96) {
@@ -185,29 +216,131 @@ export function makeTexture(tex: number): THREE.Texture {
       }
       break;
     }
+    case "asphalt": {
+      noise(ctx, 26);
+      grime(ctx, style.grime);
+      // Grietas.
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 6; i++) {
+        let x = rnd() * SIZE;
+        let y = rnd() * SIZE;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        for (let k = 0; k < 8; k++) {
+          x += (rnd() - 0.5) * 60;
+          y += (rnd() - 0.5) * 60;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      // Piedritas claras.
+      ctx.fillStyle = "rgba(255,255,255,0.12)";
+      for (let i = 0; i < 300; i++) ctx.fillRect(rnd() * SIZE, rnd() * SIZE, 2, 2);
+      break;
+    }
+    case "plaster": {
+      noise(ctx, 12);
+      grime(ctx, style.grime);
+      // Revoque descascarado abajo, y una línea de humedad.
+      ctx.fillStyle = "rgba(0,0,0,0.1)";
+      for (let i = 0; i < 12; i++) {
+        const w = 20 + rnd() * 60;
+        const h = 10 + rnd() * 30;
+        ctx.fillRect(rnd() * SIZE, SIZE - 60 + rnd() * 50, w, h);
+      }
+      break;
+    }
+    case "ribs": {
+      // Chapa acanalada: franjas verticales con luz y sombra.
+      noise(ctx, 10);
+      grime(ctx, style.grime);
+      const n = 8;
+      const w = SIZE / n;
+      for (let i = 0; i < n; i++) {
+        const x = i * w;
+        ctx.fillStyle = "rgba(255,255,255,0.14)";
+        ctx.fillRect(x, 0, w * 0.3, SIZE);
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        ctx.fillRect(x + w * 0.55, 0, w * 0.3, SIZE);
+      }
+      // Óxido.
+      for (let i = 0; i < 10; i++) {
+        const x = rnd() * SIZE;
+        const y = rnd() * SIZE;
+        const r = 10 + rnd() * 40;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, "rgba(120,60,20,0.45)");
+        g.addColorStop(1, "rgba(120,60,20,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+      break;
+    }
+    case "sacks": {
+      noise(ctx, 16);
+      // Sacos: óvalos apilados, corridos por fila.
+      const rows = 3;
+      const h = SIZE / rows;
+      const w = SIZE / 2;
+      for (let r = 0; r < rows; r++) {
+        const off = r % 2 === 0 ? 0 : w / 2;
+        for (let c = -1; c <= 2; c++) {
+          const cx = c * w + off + w / 2;
+          const cy = r * h + h / 2;
+          ctx.fillStyle = shade(style.base, (rnd() - 0.5) * 24);
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, w / 2 - 4, h / 2 - 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = style.line;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.12)";
+          ctx.beginPath();
+          ctx.ellipse(cx, cy - h / 6, w / 3, h / 6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      grime(ctx, style.grime);
+      break;
+    }
+    case "barrel": {
+      noise(ctx, 18);
+      grime(ctx, style.grime);
+      // Dos aros y óxido.
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.fillRect(0, SIZE * 0.3, SIZE, 14);
+      ctx.fillRect(0, SIZE * 0.7, SIZE, 14);
+      ctx.fillStyle = "rgba(255,255,255,0.15)";
+      ctx.fillRect(0, SIZE * 0.3 - 4, SIZE, 4);
+      ctx.fillRect(0, SIZE * 0.7 - 4, SIZE, 4);
+      break;
+    }
     default:
+      noise(ctx, 18);
+      grime(ctx, style.grime);
       bevel(ctx, 2, style.bevel);
   }
 
-  // Grilla fina de 25 cm, muy sutil.
-  ctx.strokeStyle = style.fine;
-  ctx.globalAlpha = 0.5;
-  ctx.lineWidth = 1;
-  for (let i = 1; i < 4; i++) {
-    const p = (SIZE / 4) * i + 0.5;
-    ctx.beginPath();
-    ctx.moveTo(p, 0);
-    ctx.lineTo(p, SIZE);
-    ctx.moveTo(0, p);
-    ctx.lineTo(SIZE, p);
-    ctx.stroke();
+  if (style.deco !== "bricks" && style.deco !== "asphalt" && style.deco !== "ribs" && style.deco !== "sacks" && style.deco !== "barrel") {
+    // Grilla fina de 25 cm, muy sutil, y el borde del metro.
+    ctx.strokeStyle = style.fine;
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const p = (SIZE / 4) * i + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(p, 0);
+      ctx.lineTo(p, SIZE);
+      ctx.moveTo(0, p);
+      ctx.lineTo(SIZE, p);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = style.line;
+    ctx.lineWidth = 5;
+    ctx.strokeRect(0, 0, SIZE, SIZE);
   }
-  ctx.globalAlpha = 1;
-
-  // Grilla de 1 m: el borde del tile.
-  ctx.strokeStyle = style.line;
-  ctx.lineWidth = 5;
-  ctx.strokeRect(0, 0, SIZE, SIZE);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
@@ -223,7 +356,7 @@ export function makeTexture(tex: number): THREE.Texture {
 export function makeAllMaterials(): THREE.MeshStandardMaterial[] {
   const out: THREE.MeshStandardMaterial[] = [];
   for (let i = 0; i < TEX_COUNT; i++) {
-    const metal = i === TEX_METAL;
+    const metal = i === TEX_METAL || i === TEX_CONTAINER_BLUE || i === TEX_CONTAINER_RED || i === TEX_BARREL;
     out.push(
       new THREE.MeshStandardMaterial({
         map: makeTexture(i),

@@ -3,14 +3,20 @@ import { CROUCH_TICKS, TEAM_T, type UnpackedPlayer } from "@wabcs/shared";
 import { makeLabelTexture } from "./textures.js";
 import { buildWeaponMesh, muzzleOffset } from "./viewmodel.js";
 
-const T_SHIRT = 0xc8a46a;
-const T_PANTS = 0x5a4a3a;
-const T_ACCENT = 0x8c2f2f;
-const CT_SHIRT = 0x4f6d8f;
-const CT_PANTS = 0x2b3a4d;
-const CT_ACCENT = 0x1f2d3f;
-const SKIN = 0xe0b48c;
+interface Look {
+  shirt: number;
+  pants: number;
+  vest: number;
+  boots: number;
+  head: number;
+  /** Lo que lleva en la cabeza sin casco: pañuelo (T) o gorra (CT). */
+  hat: number;
+}
+
+const T_LOOK: Look = { shirt: 0xc9a86b, pants: 0x5b4b3b, vest: 0x8a2d2d, boots: 0x2e2520, head: 0xdfb08a, hat: 0x8a2d2d };
+const CT_LOOK: Look = { shirt: 0x4b6a8f, pants: 0x2b3a4d, vest: 0x1e2b3b, boots: 0x1c222a, head: 0xe3b593, hat: 0x1e2b3b };
 const HELMET = 0x3a4048;
+const SKIN_HANDS = 0xd9a877;
 
 const matCache = new Map<number, THREE.MeshStandardMaterial>();
 function mat(color: number): THREE.MeshStandardMaterial {
@@ -30,23 +36,25 @@ function block(w: number, h: number, d: number, color: number): THREE.Mesh {
 }
 
 /**
- * Un muñeco de cajas: cabeza, torso, dos brazos, dos piernas y el arma en las
- * manos. Las piernas se balancean con la distancia recorrida, el torso se
- * agacha con `crouch`, la cabeza y los brazos siguen el pitch.
+ * Un muñeco de cajas con proporciones humanas: cabeza con cuello, torso con
+ * chaleco y cinturón, hombros, brazos en dos tramos que sostienen el arma,
+ * piernas con botas. Las piernas se balancean con la distancia recorrida, el
+ * torso se agacha con `crouch`, la cabeza y los brazos siguen el pitch.
  */
 export class PlayerAvatar {
   readonly root = new THREE.Group();
   private readonly body = new THREE.Group();
-  private readonly head: THREE.Mesh;
+  private readonly head: THREE.Group;
   private readonly helmet: THREE.Mesh;
-  private readonly torso: THREE.Mesh;
+  private readonly hat: THREE.Mesh;
   private readonly arms = new THREE.Group();
-  private readonly legL: THREE.Mesh;
-  private readonly legR: THREE.Mesh;
+  private readonly legL: THREE.Group;
+  private readonly legR: THREE.Group;
   private weaponGroup: THREE.Group | null = null;
   private weaponId = -1;
   private readonly label: THREE.Sprite;
   private walk = 0;
+  private breath = Math.random() * 6;
   private lastX = 0;
   private lastZ = 0;
   team = TEAM_T;
@@ -55,48 +63,92 @@ export class PlayerAvatar {
 
   constructor(name: string, team: number) {
     this.team = team;
-    const shirt = team === TEAM_T ? T_SHIRT : CT_SHIRT;
-    const pants = team === TEAM_T ? T_PANTS : CT_PANTS;
-    const accent = team === TEAM_T ? T_ACCENT : CT_ACCENT;
+    const look = team === TEAM_T ? T_LOOK : CT_LOOK;
 
-    this.legL = block(0.22, 0.8, 0.26, pants);
-    this.legR = block(0.22, 0.8, 0.26, pants);
-    this.legL.position.set(-0.13, 0.4, 0);
-    this.legR.position.set(0.13, 0.4, 0);
+    // Piernas: muslo + bota, pivotando desde la cadera (y = 0,82).
+    const leg = (x: number): THREE.Group => {
+      const g = new THREE.Group();
+      const thigh = block(0.2, 0.72, 0.24, look.pants);
+      thigh.position.y = -0.36;
+      const boot = block(0.22, 0.12, 0.3, look.boots);
+      boot.position.set(0, -0.76, -0.02);
+      g.add(thigh, boot);
+      g.position.set(x, 0.82, 0);
+      return g;
+    };
+    this.legL = leg(-0.12);
+    this.legR = leg(0.12);
     this.root.add(this.legL, this.legR);
 
-    this.torso = block(0.54, 0.62, 0.3, shirt);
-    this.torso.position.set(0, 0.31, 0);
-    // Una franja del color del equipo en el pecho (el "chaleco").
-    const vest = block(0.44, 0.3, 0.32, accent);
-    vest.position.set(0, 0.25, 0);
-    this.body.add(this.torso, vest);
+    // Torso con chaleco, cinturón y hombros.
+    const torso = block(0.46, 0.6, 0.26, look.shirt);
+    torso.position.set(0, 0.3, 0);
+    const vest = block(0.4, 0.34, 0.3, look.vest);
+    vest.position.set(0, 0.3, 0);
+    const belt = block(0.47, 0.06, 0.27, look.boots);
+    belt.position.set(0, 0.02, 0);
+    const shoulderL = block(0.14, 0.12, 0.26, look.shirt);
+    shoulderL.position.set(-0.28, 0.54, 0);
+    const shoulderR = block(0.14, 0.12, 0.26, look.shirt);
+    shoulderR.position.set(0.28, 0.54, 0);
+    this.body.add(torso, vest, belt, shoulderL, shoulderR);
+    if (team !== TEAM_T) {
+      const pack = block(0.3, 0.3, 0.12, look.vest);
+      pack.position.set(0, 0.3, 0.19);
+      this.body.add(pack);
+    }
 
-    this.head = block(0.3, 0.3, 0.3, SKIN);
-    this.head.position.set(0, 0.62 + 0.18, 0);
-    const visor = block(0.32, 0.08, 0.1, 0x222222);
-    visor.position.set(0, 0.03, -0.12);
-    this.head.add(visor);
-    this.helmet = block(0.34, 0.14, 0.34, HELMET);
-    this.helmet.position.set(0, 0.14, 0);
+    // Cabeza con cuello; visor, pañuelo o gorra, y el casco (si lo compra).
+    this.head = new THREE.Group();
+    const neck = block(0.12, 0.1, 0.12, look.head);
+    neck.position.y = 0.05;
+    const skull = block(0.26, 0.28, 0.26, look.head);
+    skull.position.y = 0.24;
+    const eyes = block(0.2, 0.05, 0.03, 0x1b1b1b);
+    eyes.position.set(0, 0.27, -0.13);
+    this.head.add(neck, skull, eyes);
+    if (team === TEAM_T) {
+      this.hat = block(0.28, 0.08, 0.28, look.hat);
+      this.hat.position.y = 0.34;
+      const tail = block(0.06, 0.16, 0.03, look.hat);
+      tail.position.set(0.08, 0.26, 0.15);
+      this.head.add(tail);
+    } else {
+      this.hat = block(0.28, 0.07, 0.28, look.hat);
+      this.hat.position.y = 0.36;
+      const peak = block(0.24, 0.02, 0.1, look.hat);
+      peak.position.set(0, 0.34, -0.17);
+      this.head.add(peak);
+    }
+    this.head.add(this.hat);
+    this.helmet = block(0.31, 0.16, 0.31, HELMET);
+    this.helmet.position.y = 0.36;
     this.helmet.visible = false;
     this.head.add(this.helmet);
+    this.head.position.y = 0.6;
     this.body.add(this.head);
 
-    // Los brazos pivotan desde los hombros y sostienen el arma al frente.
-    this.arms.position.set(0, 0.55, 0);
-    const armL = block(0.14, 0.14, 0.5, shirt);
-    armL.position.set(-0.2, -0.05, -0.25);
-    const armR = block(0.14, 0.14, 0.5, shirt);
-    armR.position.set(0.2, -0.05, -0.25);
-    const handL = block(0.12, 0.12, 0.12, SKIN);
-    handL.position.set(-0.12, -0.05, -0.5);
-    const handR = block(0.12, 0.12, 0.12, SKIN);
-    handR.position.set(0.14, -0.05, -0.45);
-    this.arms.add(armL, armR, handL, handR);
+    // Brazos: desde los hombros, en dos tramos, hasta el arma al frente.
+    this.arms.position.set(0, 0.5, 0);
+    const upperL = block(0.12, 0.12, 0.3, look.shirt);
+    upperL.position.set(-0.24, -0.02, -0.14);
+    upperL.rotation.y = 0.5;
+    const foreL = block(0.1, 0.1, 0.3, look.shirt);
+    foreL.position.set(-0.08, -0.04, -0.38);
+    foreL.rotation.y = 0.2;
+    const handL = block(0.1, 0.1, 0.1, SKIN_HANDS);
+    handL.position.set(-0.02, -0.04, -0.52);
+    const upperR = block(0.12, 0.12, 0.26, look.shirt);
+    upperR.position.set(0.22, -0.02, -0.08);
+    upperR.rotation.y = -0.35;
+    const foreR = block(0.1, 0.1, 0.22, look.shirt);
+    foreR.position.set(0.14, -0.06, -0.26);
+    const handR = block(0.1, 0.1, 0.1, SKIN_HANDS);
+    handR.position.set(0.12, -0.06, -0.38);
+    this.arms.add(upperL, foreL, handL, upperR, foreR, handR);
     this.body.add(this.arms);
 
-    this.body.position.y = 0.8;
+    this.body.position.y = 0.82;
     this.root.add(this.body);
 
     const labelMat = new THREE.SpriteMaterial({
@@ -118,7 +170,7 @@ export class PlayerAvatar {
     if (id === this.weaponId) return;
     if (this.weaponGroup) this.arms.remove(this.weaponGroup);
     this.weaponGroup = buildWeaponMesh(id, false);
-    this.weaponGroup.position.set(0.14, 0.0, -0.5);
+    this.weaponGroup.position.set(0.12, 0.0, -0.4);
     this.arms.add(this.weaponGroup);
     this.weaponId = id;
   }
@@ -129,6 +181,7 @@ export class PlayerAvatar {
     this.root.rotation.y = p.yaw;
     this.setWeapon(p.weapon);
     this.helmet.visible = p.helmet;
+    this.hat.visible = !p.helmet;
 
     const moved = Math.hypot(p.x - this.lastX, p.z - this.lastZ);
     this.lastX = p.x;
@@ -136,19 +189,20 @@ export class PlayerAvatar {
     const speed = dt > 0 ? moved / dt : 0;
     if (speed > 0.3 && p.onGround) this.walk += moved * 4.5;
     else this.walk *= 0.8;
-    const swing = Math.sin(this.walk) * Math.min(0.6, speed / 5);
+    const swing = Math.sin(this.walk) * Math.min(0.7, speed / 5);
+    this.breath += dt;
 
     const c = p.crouch / CROUCH_TICKS;
-    // Agachado: las piernas se acortan y el cuerpo baja; en el aire, las piernas se recogen.
+    // Agachado: las piernas se flexionan y el cuerpo baja; en el aire, se recogen.
     const legScale = 1 - c * 0.45;
     this.legL.scale.y = legScale;
     this.legR.scale.y = legScale;
-    this.legL.position.y = 0.4 * legScale;
-    this.legR.position.y = 0.4 * legScale;
-    this.legL.rotation.x = p.onGround ? swing : 0.4;
-    this.legR.rotation.x = p.onGround ? -swing : -0.2;
-    this.body.position.y = 0.8 * legScale;
-    this.body.rotation.x = c * 0.25;
+    this.legL.position.y = 0.82 * legScale;
+    this.legR.position.y = 0.82 * legScale;
+    this.legL.rotation.x = p.onGround ? swing : 0.45;
+    this.legR.rotation.x = p.onGround ? -swing : -0.25;
+    this.body.position.y = 0.82 * legScale + Math.sin(this.breath * 2) * 0.004;
+    this.body.rotation.x = c * 0.3;
 
     this.arms.rotation.x = -p.pitch * 0.9;
     this.head.rotation.x = -p.pitch * 0.5;
@@ -164,20 +218,25 @@ export class PlayerAvatar {
   }
 }
 
-/**
- * Un cuerpo en el piso donde cayó alguien, hasta que termina la ronda.
- */
+/** Un cuerpo en el piso donde cayó alguien, hasta que termina la ronda. */
 export function buildCorpse(team: number, x: number, y: number, z: number, yaw: number): THREE.Group {
   const g = new THREE.Group();
-  const shirt = team === TEAM_T ? T_SHIRT : CT_SHIRT;
-  const pants = team === TEAM_T ? T_PANTS : CT_PANTS;
-  const torso = block(0.54, 0.3, 0.62, shirt);
-  torso.position.set(0, 0.15, 0.2);
-  const head = block(0.3, 0.3, 0.3, SKIN);
-  head.position.set(0, 0.15, 0.68);
-  const legs = block(0.5, 0.26, 0.8, pants);
-  legs.position.set(0, 0.13, -0.4);
-  g.add(torso, head, legs);
+  const look = team === TEAM_T ? T_LOOK : CT_LOOK;
+  const torso = block(0.46, 0.26, 0.6, look.shirt);
+  torso.position.set(0, 0.13, 0.2);
+  const vest = block(0.4, 0.28, 0.34, look.vest);
+  vest.position.set(0, 0.14, 0.2);
+  const head = block(0.26, 0.26, 0.28, look.head);
+  head.position.set(0.05, 0.13, 0.66);
+  const legL = block(0.2, 0.22, 0.74, look.pants);
+  legL.position.set(-0.13, 0.11, -0.4);
+  const legR = block(0.2, 0.22, 0.74, look.pants);
+  legR.position.set(0.14, 0.11, -0.36);
+  legR.rotation.y = 0.2;
+  const armL = block(0.12, 0.12, 0.5, look.shirt);
+  armL.position.set(-0.34, 0.08, 0.1);
+  armL.rotation.y = -0.4;
+  g.add(torso, vest, head, legL, legR, armL);
   g.position.set(x, y, z);
   g.rotation.y = yaw + Math.PI;
   return g;
