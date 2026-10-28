@@ -77,7 +77,7 @@ con `--manso` no disparan, para probar tus tiros tranquilo.
 | `4` / `5` / `6` | granada HE, flash, humo (click para tirarla) |
 | `Q` | la última arma que tenías |
 | `B` | menú de compra: `1`-`6` armas, `7`-`9` granadas, `0` chaleco, `C` casco (en el tiempo de compra y los primeros 10 s, cerca de tu spawn) |
-| `E` | levantar el arma del piso que tengas adelante |
+| `E` | levantar el arma del piso que tengas adelante; sostenida, plantar o desactivar la bomba |
 | `G` | tirar el arma que tenés en la mano |
 | `Tab` | tabla |
 | `Enter` | chat del equipo |
@@ -85,9 +85,10 @@ con `--manso` no disparan, para probar tus tiros tranquilo.
 
 ## Cómo se juega
 
-Dos equipos, **Terroristas** y **Antiterroristas**, por rondas. Gana la ronda el equipo que
-elimina al otro. Si se acaba el tiempo (1:45), ganan los CT: son los que defienden, como en CS sin
-bomba, así que los T tienen que ir a buscarlos.
+Dos equipos, **Terroristas** y **Antiterroristas**, por rondas. En **eliminación**, gana la ronda
+el equipo que elimina al otro; si se acaba el tiempo (1:45), ganan los CT: son los que defienden,
+así que los T tienen que ir a buscarlos. En **bomba** (ver más abajo), los T además pueden ganar
+plantando la C4.
 
 Cada ronda empieza con **6 segundos de compra**: nadie se mueve, todos compran (`B`). Después se
 puede seguir comprando 10 segundos más, pero sólo a menos de 9 m del centro de tu spawn.
@@ -98,6 +99,21 @@ cero. El marcador se da vuelta con ellos.
 
 El que entra con el partido empezado mira como espectador y juega desde la ronda siguiente, en el
 equipo con menos gente.
+
+### Modo bomba
+
+El host lo elige en la sala. Un T al azar lleva la **C4** (se ve en el radar con un anillo): dentro
+de un sitio (**A**, adentro del garaje CT; **B**, en la calle izquierda; están pintados en el piso
+y en el radar) sostiene `E` 3,5 s sin moverse y la planta. Desde ahí hay **40 segundos** de mecha
+con bips cada vez más seguidos, el reloj de la ronda se congela, y matar a todos los T ya no
+termina la ronda: los CT tienen que **desactivarla**, sosteniendo `E` al lado durante 10 s (5 con
+el **kit**, $400, sólo CT). Si estalla, mata a 16 m a la redonda atravesando paredes y ganan los
+T; si la desactivan, ganan los CT. Si el portador muere, la bomba queda en el piso y cualquier T
+la levanta al pasar. Plantar paga $800 aunque se pierda la ronda.
+
+Los bots juegan el modo: los T van todos al sitio de la ronda y el que la lleva la planta; los CT
+guardan un sitio, se compran el kit y, plantada, van a desactivarla (`sim/bomb.ts`, `bombGoal`
+en `sim/bot.ts`).
 
 ### Dinero
 
@@ -232,6 +248,7 @@ packages/shared/     simulación, mapa y protocolo (TS puro, sin dependencias)
   src/sim/combat.ts    el arma, la dispersión, el retroceso, el tiro y el daño
   src/sim/inventory.ts comprar, tirar y levantar
   src/sim/grenade.ts   las granadas: física, HE, flash y humo
+  src/sim/bomb.ts      la C4: plantar, desactivar, la mecha y la explosión
   src/sim/rounds.ts    rondas, economía, cambio de lado, fin del partido
   src/sim/step.ts      el tick autoritativo
   src/sim/nav.ts       la grilla de caminos y el A* de los bots
@@ -306,4 +323,4 @@ rechaza las que no coinciden con "Hay una versión nueva del juego: recargá la 
 
 ## Lo que falta
 
-Está en [IDEAS.md](IDEAS.md): modo bomba, más mapas, bots que tiren granadas y suban a los techos, teléfono.
+Está en [IDEAS.md](IDEAS.md): más mapas, bots que suban a los techos, teléfono.

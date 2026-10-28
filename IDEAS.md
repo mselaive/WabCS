@@ -29,17 +29,15 @@ Lo que hay, lo que quedó en la lista y por qué. Primera versión: 28 de octubr
 | Mira dinámica, pasos, aterrizaje | La mira se abre con la imprecisión real; pasos propios; golpe al caer | Navegador |
 | Granadas | HE con daño por distancia y línea de vista, flash por ángulo, humo que tapa la vista del servidor y de los bots | 6 tests + navegador (me autolesioné con el rebote: funciona) |
 | Gatillo sin esperar | El input del tiro sale al apretar, no en el próximo tick | Revisado |
+| Radar | Minimapa con el mapa, vos, compañeros, rivales a la vista, granadas, humos, sitios y bomba | Navegador |
+| Bots con granadas | Compran flash, HE y humo; la HE al último visto simulando el tiro, la flash antes de ir, el humo al salir | Test + revisado |
+| Modo bomba | C4, sitios A y B, plantar, desactivar, mecha, kit, explosión, bots que plantan y desactivan | 8 tests + navegador |
 
 ## Lo que falta, en orden
 
 1. **Bots que suban a los techos.** La grilla ignora lo que está a más de un metro: los bots no
    usan los puestos de francotirador ni te buscan ahí. Haría falta una grilla por nivel.
-2. **Bots con granadas.** Compran y tiran: una flash antes de entrar al mid, un humo para cruzar,
-   una HE al último lugar donde te vieron. Simular el tiro con `advanceGrenade` para saber dónde
-   cae, como hacían los de WabBR.
-3. **Modo bomba.** Plantar en A o B, desactivar, 40 s de mecha. Es una máquina de estados más
-   sobre `rounds.ts` y dos zonas en el mapa; el mapa actual tendría que crecer un poco.
-4. **Más mapas.** Uno es poco. Con la lista de cajas es rápido; lo que lleva tiempo es que sea
+2. **Más mapas.** Uno es poco. Con la lista de cajas es rápido; lo que lleva tiempo es que sea
    justo y divertido. Un editor en el navegador (dibujar cajas y exportar el archivo) ahorraría mucho.
 5. **Teléfono.** Un FPS con el pulgar es otro juego. Si se hace, dos sticks y ayuda de puntería
    como en WabBR, pero no es prioridad.
