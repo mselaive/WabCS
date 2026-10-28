@@ -1,0 +1,64 @@
+import { MAX_NAME_LENGTH, ROOM_CODE_LENGTH } from "./constants.js";
+
+/** Sin vocales ni caracteres ambiguos (0/O, 1/I): códigos fáciles de dictar. */
+const CODE_ALPHABET = "23456789BCDFGHJKLMNPQRSTVWXYZ";
+
+export function generateRoomCode(random: () => number = Math.random): string {
+  let out = "";
+  for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
+    out += CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)];
+  }
+  return out;
+}
+
+export function normalizeRoomCode(input: string): string | null {
+  const code = input.trim().toUpperCase();
+  if (code.length !== ROOM_CODE_LENGTH) return null;
+  for (const ch of code) if (!CODE_ALPHABET.includes(ch)) return null;
+  return code;
+}
+
+/**
+ * Caracteres de control e invisibles (zero-width, marcas de dirección, BOM).
+ * Se filtran por code point en vez de con un regex literal para que el archivo
+ * fuente no tenga que contener bytes de control.
+ */
+function isInvisible(code: number): boolean {
+  return (
+    code <= 0x1f ||
+    code === 0x7f ||
+    (code >= 0x80 && code <= 0x9f) ||
+    (code >= 0x200b && code <= 0x200f) ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    (code >= 0x202a && code <= 0x202e) ||
+    code === 0x2060 ||
+    code === 0xfeff
+  );
+}
+
+function stripInvisible(s: string): string {
+  let cleaned = "";
+  for (const ch of s) if (!isInvisible(ch.codePointAt(0) ?? 0)) cleaned += ch;
+  return cleaned;
+}
+
+export function sanitizeName(raw: unknown): string {
+  const s = typeof raw === "string" ? raw : "";
+  const cleaned = stripInvisible(s).trim().slice(0, MAX_NAME_LENGTH);
+  return cleaned.length > 0 ? cleaned : "Jugador";
+}
+
+export const MAX_CHAT_LENGTH = 80;
+
+/** Un mensaje del chat: sin invisibles, sin espacios de más y cortado. Vacío, null. */
+export function sanitizeChat(raw: unknown): string | null {
+  const s = typeof raw === "string" ? raw : "";
+  const cleaned = stripInvisible(s).replace(/\s+/g, " ").trim().slice(0, MAX_CHAT_LENGTH);
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+/** El token con el que una pestaña vuelve a su asiento si se le corta la conexión. */
+export function sanitizeToken(raw: unknown): string | null {
+  return typeof raw === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(raw) ? raw : null;
+}

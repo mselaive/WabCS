@@ -1,0 +1,142 @@
+/**
+ * Todo lo que ajusta el juego, en un solo lugar. Unidades: metros, segundos,
+ * radianes. Eje Y hacia arriba (como Three.js). El tick es de 50 ms.
+ */
+
+// ------------------------------------------------------------ tiempo y red
+
+export const TICK_RATE = 20;
+export const DT = 1 / TICK_RATE;
+export const MS_PER_TICK = 1000 / TICK_RATE;
+
+/** Los demás se dibujan este tiempo en el pasado, interpolando entre snapshots. */
+export const INTERP_DELAY_MS = 100;
+
+/**
+ * Hasta cuántos ticks se rebobina a los demás para decidir un tiro (ver la
+ * compensación de lag). 8 ticks = 400 ms: alcanza para pings de unos 200 ms, y
+ * mentir sobre lo que veías no da más que esto.
+ */
+export const LAG_COMP_MAX_TICKS = 8;
+/** Cuántas posiciones pasadas se recuerdan de cada jugador. */
+export const TRAIL_LENGTH = 16;
+
+/** Sube cuando el cliente y el servidor dejan de entenderse (ver el README). */
+export const PROTOCOL_VERSION = 1;
+
+export const MIN_PLAYERS = 2;
+/** Pensado para 1v1 y 2v2; hasta 5v5 entra sin cambiar nada. */
+export const MAX_PLAYERS = 10;
+export const MAX_NAME_LENGTH = 14;
+export const ROOM_CODE_LENGTH = 6;
+
+/** Inputs que se guardan por jugador en el servidor antes de tirar los viejos. */
+export const MAX_INPUT_BUFFER = 8;
+/** Cuánto se le guarda el lugar a alguien que se desconectó en partida. */
+export const RECONNECT_GRACE_MS = 15_000;
+/** Sala sin humanos durante esto: se apaga el loop. */
+export const EMPTY_ROOM_SHUTDOWN_TICKS = 30 * TICK_RATE;
+
+/** Cuenta regresiva en el lobby antes de la primera ronda. */
+export const COUNTDOWN_TICKS = 3 * TICK_RATE;
+/** Cuánto se muestra el resultado antes de volver al lobby. */
+export const ENDED_TICKS = 12 * TICK_RATE;
+
+// ------------------------------------------------------------ jugador
+
+/** Caja de colisión: 0,6 m de ancho, 1,8 m de alto. */
+export const PLAYER_HALF_W = 0.3;
+export const PLAYER_HEIGHT = 1.8;
+export const PLAYER_CROUCH_HEIGHT = 1.25;
+/** Altura de los ojos, de pie y agachado. */
+export const EYE_STAND = 1.62;
+export const EYE_CROUCH = 1.07;
+/** El tramo de arriba de la caja que cuenta como cabeza, y el de abajo como piernas. */
+export const HEAD_HEIGHT = 0.3;
+export const LEG_HEIGHT = 0.8;
+
+export const MAX_HP = 100;
+export const MAX_ARMOR = 100;
+
+export const GRAVITY = 20;
+export const JUMP_SPEED = 7.0;
+/** Caminar (Shift) y agacharse frenan: y caminar no hace ruido. */
+export const WALK_FACTOR = 0.52;
+export const CROUCH_FACTOR = 0.34;
+/** Qué tan rápido se alcanza la velocidad máxima en el piso (1/s) y cuánto frena soltar. */
+export const GROUND_ACCEL = 14;
+export const GROUND_FRICTION = 10;
+/** En el aire casi no se corrige: el salto es una decisión. */
+export const AIR_ACCEL = 1.2;
+/** Hasta esta altura se sube caminando (cajones bajos, escalones). */
+export const STEP_HEIGHT = 0.45;
+/** Ticks que tarda pasar de pie a agachado y al revés (se interpola la altura). */
+export const CROUCH_TICKS = 4;
+
+// ------------------------------------------------------------ rondas y economía
+
+/** Tiempo de compra al empezar la ronda: nadie se mueve. */
+export const FREEZE_TICKS = 6 * TICK_RATE;
+/** Duración de la ronda. Si se acaba, ganan los CT (defienden, como en CS sin bomba). */
+export const ROUND_TICKS = 105 * TICK_RATE;
+/** Después de decidirse la ronda, cuánto se sigue jugando antes de la siguiente. */
+export const ROUND_OVER_TICKS = 5 * TICK_RATE;
+/** Después del freeze, se puede seguir comprando este tiempo (cerca del spawn). */
+export const BUY_TICKS = 10 * TICK_RATE;
+/** A menos de esto del centro del spawn propio se puede comprar. */
+export const BUY_RADIUS = 9;
+
+export const START_MONEY = 800;
+export const MAX_MONEY = 16_000;
+export const KILL_REWARD = 300;
+export const KNIFE_KILL_REWARD = 1500;
+export const WIN_REWARD = 3250;
+/** Perder paga LOSS_BASE más LOSS_STEP por cada derrota seguida (hasta LOSS_MAX_STREAK). */
+export const LOSS_BASE = 1400;
+export const LOSS_STEP = 500;
+export const LOSS_MAX_STREAK = 4;
+
+/** Rondas que hay que ganar: lo elige el host. Se cambia de lado a la mitad. */
+export const WIN_ROUNDS_OPTIONS = [5, 8, 13] as const;
+export const DEFAULT_WIN_ROUNDS = 8;
+
+/** Hasta dónde se recoge un arma del piso. */
+export const PICKUP_RANGE = 1.8;
+/** Cuánto vive un arma tirada (ticks). Al terminar la ronda se limpian todas. */
+export const DROP_TICKS = ROUND_TICKS;
+
+// ------------------------------------------------------------ input
+
+/** Bits de `btn` en el input. */
+export const BTN_SHOOT = 1;
+export const BTN_RELOAD = 2;
+export const BTN_JUMP = 4;
+export const BTN_CROUCH = 8;
+export const BTN_WALK = 16;
+export const BTN_SCOPE = 32;
+
+/** Acciones puntuales (`act`): una por input, en el tick en que se aprieta. */
+export const ACT_NONE = 0;
+export const ACT_SLOT_0 = 1;
+export const ACT_SLOT_1 = 2;
+export const ACT_SLOT_2 = 3;
+export const ACT_PICKUP = 4;
+export const ACT_DROP = 5;
+/** ACT_BUY_BASE + índice en BUY_ITEMS. */
+export const ACT_BUY_BASE = 16;
+
+/** Equipos. */
+export const TEAM_T = 0;
+export const TEAM_CT = 1;
+export const TEAM_NAMES = ["Terroristas", "Antiterroristas"] as const;
+export const TEAM_SHORT = ["T", "CT"] as const;
+
+/** Zonas de impacto. */
+export const ZONE_HEAD = 0;
+export const ZONE_BODY = 1;
+export const ZONE_LEGS = 2;
+export const ZONE_MULT = [4, 1, 0.75] as const;
+
+/** Vista normal y con la mira del francotirador (grados verticales). */
+export const FOV = 75;
+export const FOV_SCOPED = 20;

@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wabcs-server",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "GameRoom", "class_name": "GameRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
+  "observability": { "enabled": true },
+  "vars": {
+    // Orígenes permitidos para conectarse, separados por coma. Vacío = permitir
+    // todo. Sirve para que una página cualquiera de internet no pueda abrir
+    // conexiones contra tus salas y gastarte la cuota.
+    //
+    // El comodín cubre los deploys de preview que Vercel crea en cada push. Los
+    // localhost están para que `wrangler dev` siga funcionando. Si servís el
+    // juego desde un dominio propio, tiene que estar acá: el navegador no puede
+    // leer el 403 de un upgrade de WebSocket fallido, así que el síntoma es
+    // "¿el servidor está andando?" con el servidor perfecto.
+    "ALLOWED_ORIGINS": "https://*.vercel.app,http://localhost:5173,http://127.0.0.1:5173",
+    // Región donde se crea el Durable Object: sam (Sudamérica), enam, wnam,
+    // weur, eeur, apac, oc, afr, me. Vacío = cerca del primero que entra.
+    "DO_LOCATION_HINT": "sam"
+  }
+}

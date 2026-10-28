@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WabCS</title>
+    <meta name="description" content="Shooter táctico por rondas, 1v1 y 2v2, para jugar con amigos en el navegador." />
+    <meta name="theme-color" content="#0f1216" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="stage"></div>
+
+    <div id="hud" hidden>
+      <div id="damageVignette" class="vignette"></div>
+      <div id="lowHp" class="vignette low-hp"></div>
+      <div id="scope" class="scope" hidden><div class="scope-h"></div><div class="scope-v"></div></div>
+
+      <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i></div>
+      <div id="hitmarker" class="hitmarker"><i></i><i></i><i></i><i></i></div>
+
+      <div id="roundBar" class="round-bar">
+        <div class="score score-t"><span class="score-label">T</span><span id="scoreT">0</span></div>
+        <div class="clock">
+          <span id="roundTime">1:45</span>
+          <span id="roundNumber" class="round-number">Ronda 1</span>
+        </div>
+        <div class="score score-ct"><span id="scoreCT">0</span><span class="score-label">CT</span></div>
+      </div>
+      <div id="alivebar" class="alive-bar"><span id="aliveT"></span><span id="aliveCT"></span></div>
+
+      <div id="killfeed" class="killfeed"></div>
+
+      <div id="banner" class="banner" hidden></div>
+      <div id="subBanner" class="sub-banner" hidden></div>
+
+      <div id="freezeInfo" class="freeze-info" hidden></div>
+      <div id="pickupPrompt" class="pickup" hidden></div>
+      <div id="lockHint" class="lock-hint" hidden>Hacé click para jugar</div>
+
+      <div id="spectating" class="spectating" hidden></div>
+
+      <div class="vitals">
+        <div class="vital"><span class="vital-icon">✚</span><span id="hp">100</span></div>
+        <div class="vital"><span class="vital-icon" id="armorIcon">◈</span><span id="armor">0</span></div>
+      </div>
+      <div class="money"><span>$</span><span id="money">800</span></div>
+
+      <div class="ammo-box">
+        <div id="weaponName" class="weapon-name">USP-S</div>
+        <div class="ammo"><span id="ammoMag">12</span><span class="ammo-sep">/</span><span id="ammoReserve">24</span></div>
+        <div id="slots" class="slots"></div>
+      </div>
+
+      <div id="teamChat" class="team-chat">
+        <ol id="teamChatLog" class="chat-log"></ol>
+        <input id="teamChatInput" maxlength="80" placeholder="Mensaje al equipo (Enter)" autocomplete="off" hidden />
+      </div>
+
+      <div id="buyMenu" class="buy-menu" hidden>
+        <h3>Comprar <small>B para cerrar</small></h3>
+        <div id="buyMoney" class="buy-money">$800</div>
+        <ol id="buyList" class="buy-list"></ol>
+        <p class="hint">Apretá el número del ítem. Se compra en el tiempo de compra y los primeros 10 s, cerca de tu spawn.</p>
+      </div>
+    </div>
+
+    <div id="scoreboard" class="scoreboard" hidden>
+      <h3 id="scoreboardTitle">Tabla</h3>
+      <div class="sb-teams">
+        <div class="sb-team sb-t"><h4>Terroristas</h4><table><tbody id="sbT"></tbody></table></div>
+        <div class="sb-team sb-ct"><h4>Antiterroristas</h4><table><tbody id="sbCT"></tbody></table></div>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <section id="screenMenu" class="screen">
+        <h1 class="logo">Wab<span>CS</span></h1>
+        <p class="tagline">Shooter por rondas para 1v1 y 2v2. Comprá, entrá y eliminá al otro equipo.</p>
+
+        <p id="inviteHint" class="invite-hint" hidden></p>
+
+        <label class="field">
+          <span>Tu nombre</span>
+          <input id="nameInput" maxlength="14" placeholder="Jugador" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span>Volumen <small id="volumeValue"></small></span>
+          <input id="volumeInput" type="range" min="0" max="100" step="5" value="80" />
+        </label>
+
+        <label class="field">
+          <span>Sensibilidad del mouse <small id="sensValue"></small></span>
+          <input id="sensInput" type="range" min="2" max="40" step="1" value="11" />
+        </label>
+
+        <div id="menuActions" class="menu-actions">
+          <button id="btnCreate" class="btn btn-primary">Crear sala</button>
+          <div class="join-row">
+            <input id="codeInput" class="code-input" maxlength="6" placeholder="CÓDIGO" autocomplete="off" spellcheck="false" />
+            <button id="btnJoin" class="btn">Unirse</button>
+          </div>
+        </div>
+
+        <p id="menuError" class="error" hidden></p>
+
+        <details class="help">
+          <summary>Controles</summary>
+          <ul>
+            <li><b>WASD</b> — moverse · <b>Shift</b> — caminar (sin ruido) · <b>Ctrl</b> / <b>C</b> — agacharse · <b>Espacio</b> — saltar</li>
+            <li><b>Mouse</b> — mirar · <b>Click izquierdo</b> — disparar · <b>Click derecho</b> — mira (AWP)</li>
+            <li><b>R</b> — recargar · <b>1</b> / <b>2</b> / <b>3</b> — principal, pistola, cuchillo · <b>Q</b> — la última arma</li>
+            <li><b>B</b> — comprar (en el tiempo de compra, cerca de tu spawn) · <b>E</b> — levantar un arma · <b>G</b> — tirar la tuya</li>
+            <li><b>Tab</b> — tabla · <b>Enter</b> — chat del equipo · <b>Esc</b> — soltar el mouse</li>
+          </ul>
+        </details>
+
+        <details class="help">
+          <summary>Cómo se juega</summary>
+          <ul>
+            <li>Se juega por <b>rondas</b>: gana la ronda el equipo que elimina al otro. Si se acaba el tiempo, ganan los <b>CT</b>.</li>
+            <li>Al empezar cada ronda hay <b>6 s de compra</b>: nadie se mueve, todos compran. Después, 10 s más cerca del spawn.</li>
+            <li>Dinero: <b>$800</b> para arrancar, <b>$3250</b> por ganar la ronda, <b>$1400+</b> por perder (más cada derrota seguida), <b>$300</b> por kill.</li>
+            <li>El que sobrevive <b>conserva</b> sus armas y chaleco. El que muere arranca con la pistola.</li>
+            <li>A la mitad del partido se <b>cambia de lado</b>. Gana el primero que llega a las rondas que eligió el host.</li>
+            <li>Un tiro en la <b>cabeza</b> hace 4 veces el daño. El casco lo amortigua.</li>
+          </ul>
+        </details>
+      </section>
+
+      <section id="screenLobby" class="screen" hidden>
+        <h2>Sala</h2>
+        <button id="roomCode" class="room-code" title="Copiar link de invitación">------</button>
+        <p class="hint">Tocá el código para copiar el link e invitá a tus amigos.</p>
+
+        <div class="teams">
+          <div class="team-col team-t">
+            <h4>Terroristas</h4>
+            <ul id="listT" class="player-list"></ul>
+            <button id="btnJoinT" class="btn btn-small" type="button">Unirme a T</button>
+          </div>
+          <div class="team-col team-ct">
+            <h4>Antiterroristas</h4>
+            <ul id="listCT" class="player-list"></ul>
+            <button id="btnJoinCT" class="btn btn-small" type="button">Unirme a CT</button>
+          </div>
+        </div>
+
+        <div id="roundsRow" class="mode-row" role="radiogroup" aria-label="Rondas para ganar">
+          <span class="mode-label">Rondas para ganar</span>
+          <button class="mode-btn" type="button" role="radio" data-rounds="5">5</button>
+          <button class="mode-btn" type="button" role="radio" data-rounds="8">8</button>
+          <button class="mode-btn" type="button" role="radio" data-rounds="13">13</button>
+        </div>
+
+        <div class="lobby-actions">
+          <button id="btnReady" class="btn btn-primary">Estoy listo</button>
+          <button id="btnStart" class="btn" hidden>Empezar ya</button>
+          <button id="btnLeave" class="btn btn-ghost">Salir</button>
+        </div>
+        <p id="lobbyHint" class="hint"></p>
+        <div class="lobby-chat">
+          <ol id="chatLog" class="chat-log" aria-live="polite"></ol>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" maxlength="80" placeholder="Escribile algo a la sala" autocomplete="off" />
+            <button class="btn btn-small" type="submit">Mandar</button>
+          </form>
+        </div>
+        <p id="nextMatch" class="next-match" hidden></p>
+      </section>
+
+      <section id="screenResult" class="screen" hidden>
+        <h2 id="resultTitle">Fin del partido</h2>
+        <p id="resultSubtitle" class="tagline"></p>
+        <div id="resultTable" class="result-table"></div>
+        <p class="hint">Volviendo a la sala...</p>
+      </section>
+
+      <section id="screenConnecting" class="screen" hidden>
+        <h2>Conectando...</h2>
+        <p class="tagline">Buscando la sala.</p>
+      </section>
+    </div>
+
+    <div id="reconnecting" class="reconnecting" role="status" hidden>Se cortó la conexión. Reconectando<span class="dots"></span></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
