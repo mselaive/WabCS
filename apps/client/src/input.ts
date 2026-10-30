@@ -30,7 +30,7 @@ const CROUCH = new Set(["ControlLeft", "ControlRight", "KeyC"]);
 const WALK = new Set(["ShiftLeft", "ShiftRight"]);
 
 /** Lo que se le pide a la interfaz desde el teclado, en vez de al muñeco. */
-export type UiIntent = "buy" | "scoreboardOn" | "scoreboardOff" | "chat" | "lastWeapon" | "spectateNext" | "pause";
+export type UiIntent = "buy" | "scoreboardOn" | "scoreboardOff" | "chat" | "lastWeapon" | "spectateNext" | "pause" | "exitFullscreen";
 
 /** El bloqueo de teclado (sólo en pantalla completa): así Esc llega a la página en vez de soltar el mouse. */
 const keyboardLock = (): { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void } | undefined =>
@@ -157,6 +157,12 @@ export class InputController {
     if (this.locked) document.exitPointerLock();
   }
 
+  /** Salir de pantalla completa (y devolverle Esc al navegador). */
+  exitFullscreen(): void {
+    keyboardLock()?.unlock?.();
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+
   setView(yaw: number, pitch: number): void {
     this.yaw = yaw;
     this.pitch = pitch;
@@ -175,8 +181,9 @@ export class InputController {
         // Sólo llega acá en pantalla completa (con la tecla bloqueada); si no, el
         // navegador ya soltó el mouse y mostramos la pausa igual al notarlo.
         e.preventDefault();
-        if (this.uiBusy) return;
-        if (!e.repeat && this.active) this.intents.push("pause");
+        if (this.uiBusy || e.repeat) return;
+        // Jugando: pausa (se suelta el mouse). Ya en pausa: Esc otra vez sale de pantalla completa.
+        this.intents.push(this.active ? "pause" : "exitFullscreen");
         return;
       }
       if (e.code === "Tab") {

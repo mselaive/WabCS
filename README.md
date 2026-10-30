@@ -76,7 +76,7 @@ con `--manso` no disparan, para probar tus tiros tranquilo.
 | `Shift` | caminar: más lento, sin ruido |
 | `Ctrl` / `C` | agacharse: más lento, más preciso, más bajo |
 | `Espacio` | saltar (caerse de más de ~2 m duele: del techo del garaje son ~25 de vida) |
-| `Esc` | pausa (volumen, sensibilidad, salir). Fuera de pantalla completa el navegador suelta el mouse con Esc, sí o sí: por eso el juego va en pantalla completa por defecto (se apaga en el menú), que es donde se puede bloquear la tecla |
+| `Esc` | pausa (volumen, sensibilidad, salir); Esc otra vez sale de pantalla completa. Fuera de pantalla completa el navegador suelta el mouse con Esc, sí o sí: por eso el juego va en pantalla completa por defecto (se apaga en el menú o en la pausa), que es donde se puede quedarse con la tecla |
 | `R` | recargar |
 | `1` / `2` / `3` | principal, pistola, cuchillo |
 | `4` / `5` / `6` | granada HE, flash, humo (click para tirarla) |

@@ -722,6 +722,9 @@ export class Game {
           // Esc en pantalla completa: se suelta el mouse a propósito y la pausa aparece al notarlo.
           this.input.releaseLock();
           break;
+        case "exitFullscreen":
+          this.input.exitFullscreen();
+          break;
         case "scoreboardOn":
           this.ui.setScoreboard(true);
           if (this.latestRound) this.ui.updateScoreboard(this.latestStandings, this.myId, this.latestRound.score);
@@ -786,6 +789,10 @@ export class Game {
   /** "Seguir jugando" en la pausa: volver a capturar el mouse. */
   resume(): void {
     this.input.requestLock(this.stage);
+  }
+
+  exitFullscreen(): void {
+    this.input.exitFullscreen();
   }
 
   private updatePlaying(now: number, dt: number): void {

@@ -43,6 +43,7 @@ const ui = new UI({
   onSensitivity: (value) => game?.setSensitivity(value),
   onFullscreen: (on) => game?.setFullscreen(on),
   onResume: () => game.resume(),
+  onExitFullscreen: () => game.exitFullscreen(),
   onLeave: () => {
     game.disconnect();
     ui.setPause(false);

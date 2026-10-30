@@ -33,6 +33,7 @@ export interface UICallbacks {
   onSensitivity: (value: number) => void;
   onFullscreen: (on: boolean) => void;
   onResume: () => void;
+  onExitFullscreen: () => void;
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -138,6 +139,11 @@ export class UI {
     applyFullscreen(load(FULLSCREEN_KEY) !== "0");
 
     $("btnResume").addEventListener("click", () => cb.onResume());
+    $("btnFullscreenOff").addEventListener("click", () => cb.onExitFullscreen());
+    // Si cambia la pantalla completa con la pausa abierta, el texto y el botón se actualizan.
+    document.addEventListener("fullscreenchange", () => {
+      if (!$("pausePanel").hidden) this.setPause(true, this.pauseRetry);
+    });
     $("btnPauseLeave").addEventListener("click", () => cb.onLeave());
 
     $("btnCreate").addEventListener("click", () => cb.onCreate(this.name()));
@@ -562,13 +568,18 @@ export class UI {
    * (Esc, o el navegador que lo soltó). `retry` es que el navegador rechazó
    * volver a capturar porque se acababa de soltar.
    */
+  private pauseRetry = false;
+
   setPause(visible: boolean, retry = false): void {
+    this.pauseRetry = retry;
     $("pausePanel").hidden = !visible;
+    const fs = document.fullscreenElement !== null;
+    $("btnFullscreenOff").hidden = !fs;
     $("pauseHint").textContent = retry
       ? "El navegador pide esperar un segundo: volvé a hacer click en Seguir."
-      : document.fullscreenElement
-        ? "Esc abre y cierra esta pausa."
-        : "Esc suelta el mouse fuera de pantalla completa. Hacé click en Seguir para volver.";
+      : fs
+        ? "Esc otra vez sale de pantalla completa (o mantenelo apretado). Para seguir, click en Seguir jugando."
+        : "Fuera de pantalla completa, Esc suelta el mouse. Hacé click en Seguir para volver.";
   }
 
   setSpectating(html: string | null): void {
