@@ -31,6 +31,8 @@ export interface UICallbacks {
   onBuy: (index: number) => void;
   onVolume: (volume: number) => void;
   onSensitivity: (value: number) => void;
+  onFullscreen: (on: boolean) => void;
+  onResume: () => void;
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -41,6 +43,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
 
 const NAME_KEY = "wabcs:name";
 const VOLUME_KEY = "wabcs:volume";
+const FULLSCREEN_KEY = "wabcs:fullscreen";
 const SENS_KEY = "wabcs:sens";
 
 function load(key: string): string | null {
@@ -101,29 +104,41 @@ export class UI {
     const savedName = load(NAME_KEY);
     if (savedName) this.nameInput.value = savedName;
 
-    const volumeInput = $<HTMLInputElement>("volumeInput");
-    const volumeValue = $("volumeValue");
-    const savedVolume = load(VOLUME_KEY);
-    if (savedVolume) volumeInput.value = savedVolume;
-    const applyVolume = () => {
-      volumeValue.textContent = `${volumeInput.value}%`;
-      save(VOLUME_KEY, volumeInput.value);
-      cb.onVolume(Number(volumeInput.value) / 100);
+    // Volumen y sensibilidad están en el menú y en la pausa: los dos deslizadores van a la par.
+    const volumeInputs = [$<HTMLInputElement>("volumeInput"), $<HTMLInputElement>("pauseVolumeInput")];
+    const volumeValues = [$("volumeValue"), $("pauseVolumeValue")];
+    const applyVolume = (v: string) => {
+      for (const i of volumeInputs) i.value = v;
+      for (const el of volumeValues) el.textContent = `${v}%`;
+      save(VOLUME_KEY, v);
+      cb.onVolume(Number(v) / 100);
     };
-    volumeInput.addEventListener("input", applyVolume);
-    applyVolume();
+    for (const i of volumeInputs) i.addEventListener("input", () => applyVolume(i.value));
+    applyVolume(load(VOLUME_KEY) ?? volumeInputs[0]!.value);
 
-    const sensInput = $<HTMLInputElement>("sensInput");
-    const sensValue = $("sensValue");
-    const savedSens = load(SENS_KEY);
-    if (savedSens) sensInput.value = savedSens;
-    const applySens = () => {
-      sensValue.textContent = `${(Number(sensInput.value) / 10).toFixed(1)}`;
-      save(SENS_KEY, sensInput.value);
-      cb.onSensitivity(Number(sensInput.value) / 10);
+    const sensInputs = [$<HTMLInputElement>("sensInput"), $<HTMLInputElement>("pauseSensInput")];
+    const sensValues = [$("sensValue"), $("pauseSensValue")];
+    const applySens = (v: string) => {
+      for (const i of sensInputs) i.value = v;
+      for (const el of sensValues) el.textContent = `${(Number(v) / 10).toFixed(1)}`;
+      save(SENS_KEY, v);
+      cb.onSensitivity(Number(v) / 10);
     };
-    sensInput.addEventListener("input", applySens);
-    applySens();
+    for (const i of sensInputs) i.addEventListener("input", () => applySens(i.value));
+    applySens(load(SENS_KEY) ?? sensInputs[0]!.value);
+
+    // Pantalla completa al jugar (así Esc no suelta el mouse). Encendido salvo que se apague.
+    const fsInputs = [$<HTMLInputElement>("fullscreenInput"), $<HTMLInputElement>("pauseFullscreen")];
+    const applyFullscreen = (on: boolean) => {
+      for (const i of fsInputs) i.checked = on;
+      save(FULLSCREEN_KEY, on ? "1" : "0");
+      cb.onFullscreen(on);
+    };
+    for (const i of fsInputs) i.addEventListener("change", () => applyFullscreen(i.checked));
+    applyFullscreen(load(FULLSCREEN_KEY) !== "0");
+
+    $("btnResume").addEventListener("click", () => cb.onResume());
+    $("btnPauseLeave").addEventListener("click", () => cb.onLeave());
 
     $("btnCreate").addEventListener("click", () => cb.onCreate(this.name()));
     $("btnPractice").addEventListener("click", () => cb.onPractice(this.name()));
@@ -225,6 +240,9 @@ export class UI {
 
   hideScreens(): void {
     this.overlay.hidden = true;
+    // El botón que se apretó para arrancar no se queda con el foco: Espacio lo volvería a apretar.
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && focused !== document.body) focused.blur();
   }
 
   showError(message: string): void {
@@ -539,10 +557,18 @@ export class UI {
     if (weaponId !== null) el.innerHTML = `<b>E</b> para levantar ${weapon(weaponId).name}`;
   }
 
-  setLockHint(visible: boolean, text = "Hacé click para jugar"): void {
-    const el = $("lockHint");
-    el.hidden = !visible;
-    el.textContent = text;
+  /**
+   * La pausa: aparece cuando el mouse no está capturado en medio de la partida
+   * (Esc, o el navegador que lo soltó). `retry` es que el navegador rechazó
+   * volver a capturar porque se acababa de soltar.
+   */
+  setPause(visible: boolean, retry = false): void {
+    $("pausePanel").hidden = !visible;
+    $("pauseHint").textContent = retry
+      ? "El navegador pide esperar un segundo: volvé a hacer click en Seguir."
+      : document.fullscreenElement
+        ? "Esc abre y cierra esta pausa."
+        : "Esc suelta el mouse fuera de pantalla completa. Hacé click en Seguir para volver.";
   }
 
   setSpectating(html: string | null): void {

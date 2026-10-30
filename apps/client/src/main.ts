@@ -41,9 +41,13 @@ const ui = new UI({
   onBuy: (index) => game.buy(index),
   onVolume: (volume) => game?.setVolume(volume),
   onSensitivity: (value) => game?.setSensitivity(value),
+  onFullscreen: (on) => game?.setFullscreen(on),
+  onResume: () => game.resume(),
   onLeave: () => {
     game.disconnect();
+    ui.setPause(false);
     ui.showScreen("menu");
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   },
 });
 

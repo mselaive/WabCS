@@ -30,7 +30,11 @@ const CROUCH = new Set(["ControlLeft", "ControlRight", "KeyC"]);
 const WALK = new Set(["ShiftLeft", "ShiftRight"]);
 
 /** Lo que se le pide a la interfaz desde el teclado, en vez de al muñeco. */
-export type UiIntent = "buy" | "scoreboardOn" | "scoreboardOff" | "chat" | "lastWeapon" | "spectateNext";
+export type UiIntent = "buy" | "scoreboardOn" | "scoreboardOff" | "chat" | "lastWeapon" | "spectateNext" | "pause";
+
+/** El bloqueo de teclado (sólo en pantalla completa): así Esc llega a la página en vez de soltar el mouse. */
+const keyboardLock = (): { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void } | undefined =>
+  (navigator as unknown as { keyboard?: { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void } }).keyboard;
 
 const MAX_PITCH = Math.PI / 2 - 0.02;
 
@@ -81,6 +85,13 @@ export class InputController {
    * esconder el cursor. Es peor, pero es mejor que nada.
    */
   private lockFailed = false;
+  /**
+   * Jugar en pantalla completa. Es la única forma de que Esc no suelte el
+   * mouse: ahí el navegador deja bloquear esa tecla y la usamos para la pausa.
+   */
+  fullscreenWanted = true;
+  /** La última captura la rechazó el navegador porque se acababa de soltar (Esc): en un segundo se puede de nuevo. */
+  lockRetryHint = false;
 
   get locked(): boolean {
     return document.pointerLockElement !== null;
@@ -93,21 +104,53 @@ export class InputController {
 
   requestLock(target: HTMLElement): void {
     if (this.active) return;
-    try {
-      const p = target.requestPointerLock({ unadjustedMovement: true } as PointerLockOptions) as unknown;
-      if (p instanceof Promise) {
-        p.catch(() => {
-          try {
-            const again = target.requestPointerLock() as unknown;
-            if (again instanceof Promise) again.catch(() => (this.lockFailed = true));
-          } catch {
-            this.lockFailed = true;
-          }
-        });
+    // Que ningún botón se quede con el foco mientras se juega.
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && focused !== document.body) focused.blur();
+
+    const failed = (err: unknown) => {
+      // "SecurityError" es que el usuario acaba de soltar la captura (Esc): el
+      // navegador pide esperar un instante. Cualquier otra cosa es que acá no se puede.
+      if (err instanceof DOMException && err.name === "SecurityError") this.lockRetryHint = true;
+      else this.lockFailed = true;
+    };
+    const lockPointer = () => {
+      this.lockRetryHint = false;
+      try {
+        const p = target.requestPointerLock({ unadjustedMovement: true } as PointerLockOptions) as unknown;
+        if (p instanceof Promise) {
+          p.catch(() => {
+            try {
+              const again = target.requestPointerLock() as unknown;
+              if (again instanceof Promise) again.catch(failed);
+            } catch (e) {
+              failed(e);
+            }
+          });
+        }
+      } catch (e) {
+        failed(e);
       }
-    } catch {
-      this.lockFailed = true;
+    };
+
+    if (this.fullscreenWanted && !document.fullscreenElement && document.fullscreenEnabled) {
+      // Primero la pantalla completa, después el bloqueo de Esc y la captura del
+      // mouse (el gesto del click sigue valiendo unos segundos).
+      // Si el navegador no contesta rápido (una vista embebida que no puede ir a
+      // pantalla completa se queda pensando), se pide la captura igual.
+      let done = false;
+      const next = () => {
+        if (done) return;
+        done = true;
+        if (document.fullscreenElement) keyboardLock()?.lock?.(["Escape"])?.catch(() => {});
+        lockPointer();
+      };
+      document.documentElement.requestFullscreen({ navigationUI: "hide" }).then(next, next);
+      setTimeout(next, 700);
+      return;
     }
+    if (document.fullscreenElement) keyboardLock()?.lock?.(["Escape"])?.catch(() => {});
+    lockPointer();
   }
 
   releaseLock(): void {
@@ -123,7 +166,19 @@ export class InputController {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (!this.enabled && !this.watching) return;
+      // Un botón que quedó con el foco (el de la sala, el de jugar) se "clickearía" con Espacio
+      // o Enter en medio de la partida, y eso te saca del juego y suelta el mouse. Se le quita.
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && focused !== document.body) focused.blur();
 
+      if (e.code === "Escape") {
+        // Sólo llega acá en pantalla completa (con la tecla bloqueada); si no, el
+        // navegador ya soltó el mouse y mostramos la pausa igual al notarlo.
+        e.preventDefault();
+        if (this.uiBusy) return;
+        if (!e.repeat && this.active) this.intents.push("pause");
+        return;
+      }
       if (e.code === "Tab") {
         e.preventDefault();
         if (!e.repeat) this.intents.push("scoreboardOn");
@@ -161,6 +216,8 @@ export class InputController {
 
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Tab") this.intents.push("scoreboardOff");
+      // El click de un botón con Espacio sale en el keyup: también se frena acá.
+      if (e.code === "Space" && (this.enabled || this.watching) && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) e.preventDefault();
       this.keys.delete(e.code);
     };
 
@@ -177,6 +234,8 @@ export class InputController {
     };
 
     const onMouseDown = (e: MouseEvent) => {
+      // La pausa es parte de la pantalla: un click ahí es para sus controles, no para volver.
+      if (e.target instanceof Element && e.target.closest(".pause")) return;
       if (!this.active) {
         if (this.enabled || this.watching) this.requestLock(target);
         return;

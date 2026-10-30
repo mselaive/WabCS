@@ -46,7 +46,23 @@
       <div id="useBar" class="use-bar" hidden><div id="useFill"></div><span id="useText"></span></div>
       <div id="siteLabel" class="site-label" hidden></div>
       <div id="pickupPrompt" class="pickup" hidden></div>
-      <div id="lockHint" class="lock-hint" hidden>Hacé click para jugar</div>
+      <div id="pausePanel" class="pause" hidden>
+        <h2>Pausa</h2>
+        <p id="pauseHint" class="pause-hint"></p>
+        <label class="field">
+          <span>Volumen <small id="pauseVolumeValue"></small></span>
+          <input id="pauseVolumeInput" type="range" min="0" max="100" step="5" value="80" />
+        </label>
+        <label class="field">
+          <span>Sensibilidad del mouse <small id="pauseSensValue"></small></span>
+          <input id="pauseSensInput" type="range" min="2" max="40" step="1" value="11" />
+        </label>
+        <label class="check"><input id="pauseFullscreen" type="checkbox" checked /> Pantalla completa (así Esc no suelta el mouse)</label>
+        <div class="pause-actions">
+          <button id="btnResume" class="btn btn-primary" type="button">Seguir jugando</button>
+          <button id="btnPauseLeave" class="btn btn-ghost" type="button">Salir de la partida</button>
+        </div>
+      </div>
 
       <div id="spectating" class="spectating" hidden></div>
 
@@ -104,6 +120,10 @@
         <label class="field">
           <span>Sensibilidad del mouse <small id="sensValue"></small></span>
           <input id="sensInput" type="range" min="2" max="40" step="1" value="11" />
+        </label>
+
+        <label class="check" title="En pantalla completa el navegador nos deja quedarnos con la tecla Esc: abre la pausa en vez de soltar el mouse">
+          <input id="fullscreenInput" type="checkbox" checked /> Pantalla completa al jugar (así Esc no suelta el mouse)
         </label>
 
         <div id="menuActions" class="menu-actions">

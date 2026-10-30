@@ -718,6 +718,10 @@ export class Game {
           if (this.ui.isBuyOpen) this.ui.closeBuy();
           else if (this.phase === "playing" && this.predictor?.state.alive) this.ui.openBuy(this.myTeam, this.predictor.state.money);
           break;
+        case "pause":
+          // Esc en pantalla completa: se suelta el mouse a propósito y la pausa aparece al notarlo.
+          this.input.releaseLock();
+          break;
         case "scoreboardOn":
           this.ui.setScoreboard(true);
           if (this.latestRound) this.ui.updateScoreboard(this.latestStandings, this.myId, this.latestRound.score);
@@ -762,12 +766,26 @@ export class Game {
   }
 
   private lockHintShown = false;
+  private lockRetryShown = false;
 
+  /** Sin el mouse capturado en medio de la partida se muestra la pausa. */
   private refreshLockHint(): void {
     const show = (this.phase === "playing" || this.phase === "countdown") && !this.input.active;
-    if (show === this.lockHintShown) return;
+    const retry = this.input.lockRetryHint;
+    if (show === this.lockHintShown && retry === this.lockRetryShown) return;
     this.lockHintShown = show;
-    this.ui.setLockHint(show, "Hacé click para jugar");
+    this.lockRetryShown = retry;
+    this.ui.setPause(show, retry);
+  }
+
+  /** Jugar en pantalla completa (ahí Esc abre la pausa en vez de soltar el mouse). */
+  setFullscreen(on: boolean): void {
+    this.input.fullscreenWanted = on;
+  }
+
+  /** "Seguir jugando" en la pausa: volver a capturar el mouse. */
+  resume(): void {
+    this.input.requestLock(this.stage);
   }
 
   private updatePlaying(now: number, dt: number): void {
