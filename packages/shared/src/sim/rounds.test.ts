@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BODEGA } from "../map/bodega.js";
 import {
+  ARMS_LADDER,
+  ARMS_RESPAWN_TICKS,
+  MODE_ARMS,
+  MODE_AWP,
+  ZONE_BODY,
+
   ACT_BUY_BASE,
   FREEZE_TICKS,
   LOSS_BASE,
@@ -12,7 +18,9 @@ import {
   TEAM_T,
   WIN_REWARD,
 } from "../constants.js";
-import { AK47, GLOCK, KNIFE, M4A4, USP, buyItemIndex } from "../weapons.js";
+import { AK47, AWP, GLOCK, KNIFE, M4A4, USP, buyItemIndex } from "../weapons.js";
+import { damagePlayer } from "./combat.js";
+import { canBuy } from "./inventory.js";
 import { createGameState, createPlayer, step } from "./step.js";
 import { startMatch } from "./rounds.js";
 import type { PlayerInput, SimEvent } from "./types.js";
@@ -156,5 +164,70 @@ describe("las rondas", () => {
     step(state, new Map([[1, [input({ act: ACT_BUY_BASE + buyItemIndex("helmet") })]]]), events, BODEGA);
     expect(t.helmet).toBe(true);
     expect(t.money).toBe(500);
+  });
+});
+
+describe("sólo AWP y carrera de armas", () => {
+  it("en sólo AWP todos arrancan con AWP, cuchillo y chaleco, y no hay tienda", () => {
+    const state = createGameState();
+    const t = createPlayer(1, TEAM_T);
+    const ct = createPlayer(2, TEAM_CT);
+    state.players.push(t, ct);
+    const events: SimEvent[] = [];
+    startMatch(state, 1, BODEGA, 5, events, MODE_AWP);
+    for (const p of [t, ct]) {
+      expect(p.slots[0]).toBe(AWP);
+      expect(p.slots[1]).toBe(-1);
+      expect(p.slots[2]).toBe(KNIFE);
+      expect(p.armor).toBe(100);
+      expect(canBuy(state, p, BODEGA)).toBe(false);
+    }
+    // El que muere vuelve con el AWP en la ronda siguiente, como todos.
+    damagePlayer(state, ct, t, 500, ZONE_BODY, AWP, ct.x, ct.y, ct.z, BODEGA, events);
+    run(state, events, FREEZE_TICKS + ROUND_OVER_TICKS + 2);
+    expect(state.round.number).toBe(2);
+    expect(ct.alive).toBe(true);
+    expect(ct.slots[0]).toBe(AWP);
+    expect(ct.ammo[0]).toBe(5);
+  });
+
+  it("en la carrera de armas se reaparece, cada baja da la siguiente arma y la del cuchillo gana", () => {
+    const state = createGameState();
+    const a = createPlayer(1, TEAM_T);
+    const b = createPlayer(2, TEAM_CT);
+    state.players.push(a, b);
+    const events: SimEvent[] = [];
+    startMatch(state, 1, BODEGA, 5, events, MODE_ARMS);
+    expect(a.slots[1]).toBe(ARMS_LADDER[0]);
+    expect(state.round.winRounds).toBe(ARMS_LADDER.length);
+    run(state, events, FREEZE_TICKS);
+    expect(state.round.phase).toBe("live");
+
+    // Una baja: la siguiente arma, y el muerto vuelve a los 3 s en su lado.
+    damagePlayer(state, b, a, 500, ZONE_BODY, ARMS_LADDER[0]!, b.x, b.y, b.z, BODEGA, events);
+    expect(b.alive).toBe(false);
+    run(state, events, 1);
+    expect(a.slots.includes(ARMS_LADDER[1]!)).toBe(true);
+    expect(state.round.phase).toBe("live");
+    expect(state.drops.length).toBe(0);
+    run(state, events, ARMS_RESPAWN_TICKS - 2);
+    expect(b.alive).toBe(false);
+    run(state, events, 2);
+    expect(b.alive).toBe(true);
+    expect(b.hp).toBe(100);
+    expect(b.z).toBeLessThan(0);
+    expect(state.round.score[0]).toBe(1);
+
+    // En el último escalón sólo queda el cuchillo; esa baja termina el partido.
+    a.kills = ARMS_LADDER.length - 1;
+    run(state, events, 1);
+    expect(a.slots[0]).toBe(-1);
+    expect(a.slots[1]).toBe(-1);
+    expect(a.active).toBe(2);
+    damagePlayer(state, b, a, 500, ZONE_BODY, KNIFE, b.x, b.y, b.z, BODEGA, events);
+    run(state, events, 1);
+    expect(state.phase).toBe("ended");
+    expect(state.winnerTeam).toBe(TEAM_T);
+    expect(events.some((e) => e.t === "match" && e.winner === TEAM_T)).toBe(true);
   });
 });

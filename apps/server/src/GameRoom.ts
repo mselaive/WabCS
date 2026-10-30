@@ -17,6 +17,8 @@ import {
   MAPS,
   MAX_PLAYERS,
   MIN_PLAYERS,
+  MODE_ARMS,
+  MODE_AWP,
   MODE_BOMB,
   MODE_ELIM,
   MS_PER_TICK,
@@ -380,7 +382,7 @@ export class GameRoom extends Server<Env> {
 
       case "mode": {
         if (seat.playerId !== this.hostId || this.state.phase !== "lobby") return;
-        if (msg.mode !== MODE_ELIM && msg.mode !== MODE_BOMB) return;
+        if (msg.mode !== MODE_ELIM && msg.mode !== MODE_BOMB && msg.mode !== MODE_AWP && msg.mode !== MODE_ARMS) return;
         this.mode = msg.mode;
         this.broadcastRoster();
         return;

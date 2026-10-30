@@ -351,6 +351,8 @@ export class ViewModel {
   private reloadTotal = 1;
   private wasReloading = false;
   private knifeT = 0;
+  private inspectT = 0;
+  private readonly inspectTotal = 1.7;
   private landDip = 0;
   private hidden = false;
   private time = 0;
@@ -387,6 +389,7 @@ export class ViewModel {
     this.drawT = this.drawTotal;
     this.reloadT = 0;
     this.knifeT = 0;
+    this.inspectT = 0;
     this.cycleT = 0;
     this.flash.position.copy(muzzleOffset(id));
   }
@@ -401,7 +404,14 @@ export class ViewModel {
   }
 
   /** Un tiro salió: retroceso, fogonazo, corredera; el cerrojo o la bomba después. */
+  /** Mirar el arma (F): la da vuelta para mostrar el costado; el cuchillo da una vuelta entera. */
+  inspect(): void {
+    if (this.hidden || this.reloadT > 0 || this.drawT > 0 || this.inspectT > 0) return;
+    this.inspectT = this.inspectTotal;
+  }
+
   fire(): void {
+    this.inspectT = 0;
     const w = weapon(this.current);
     if (w.melee > 0 || this.current >= 9) {
       // El tajo del cuchillo, o el brazo que tira la granada: el mismo movimiento.
@@ -419,6 +429,7 @@ export class ViewModel {
   }
 
   reload(totalSeconds: number): void {
+    this.inspectT = 0;
     this.reloadTotal = Math.max(0.4, totalSeconds);
     this.reloadT = this.reloadTotal;
   }
@@ -552,15 +563,41 @@ export class ViewModel {
       knifeX = -0.06 * s;
     }
 
+    // Inspeccionar: el arma se levanta y gira para mostrar el costado, y vuelve; el cuchillo da una vuelta.
+    let insX = 0;
+    let insY = 0;
+    let insZ = 0;
+    let insRX = 0;
+    let insRY = 0;
+    let insRZ = 0;
+    if (this.inspectT > 0) {
+      this.inspectT = Math.max(0, this.inspectT - dt);
+      const t = 1 - this.inspectT / this.inspectTotal;
+      const s = Math.sin(Math.PI * t);
+      if (w.melee > 0) {
+        insRX = -Math.PI * 2 * smooth(Math.min(1, Math.max(0, (t - 0.15) / 0.6)));
+        insRZ = 0.5 * s;
+        insY = 0.05 * s;
+        insZ = -0.06 * s;
+      } else {
+        insRY = -1.05 * s;
+        insRX = 0.3 * s;
+        insRZ = 0.3 * s;
+        insX = -0.11 * s;
+        insY = 0.04 * s;
+        insZ = -0.07 * s;
+      }
+    }
+
     this.mesh.position.set(
-      bx + idleX + this.swayX + this.kickSide * kk + knifeX,
-      by + idleY + this.swayY * 0.6 - drawK * 0.35 - this.landDip * 0.05 + dropY,
-      kk * 0.05 + knifeZ,
+      bx + idleX + this.swayX + this.kickSide * kk + knifeX + insX,
+      by + idleY + this.swayY * 0.6 - drawK * 0.35 - this.landDip * 0.05 + dropY + insY,
+      kk * 0.05 + knifeZ + insZ,
     );
     this.mesh.rotation.set(
-      -kk * 0.14 + drawK * 1.1 + tiltX + knifeRot + cycleTilt + this.landDip * 0.08,
-      this.swayX * 0.8 + drawK * 0.25,
-      this.kickSide * kk * 2 + tiltZ,
+      -kk * 0.14 + drawK * 1.1 + tiltX + knifeRot + cycleTilt + this.landDip * 0.08 + insRX,
+      this.swayX * 0.8 + drawK * 0.25 + insRY,
+      this.kickSide * kk * 2 + tiltZ + insRZ,
     );
 
     if (this.flashLeft > 0) {

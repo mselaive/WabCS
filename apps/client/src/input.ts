@@ -30,7 +30,7 @@ const CROUCH = new Set(["ControlLeft", "ControlRight", "KeyC"]);
 const WALK = new Set(["ShiftLeft", "ShiftRight"]);
 
 /** Lo que se le pide a la interfaz desde el teclado, en vez de al muñeco. */
-export type UiIntent = "buy" | "scoreboardOn" | "scoreboardOff" | "chat" | "lastWeapon" | "spectateNext" | "pause" | "exitFullscreen";
+export type UiIntent = "buy" | "scoreboardOn" | "scoreboardOff" | "chat" | "lastWeapon" | "spectateNext" | "pause" | "exitFullscreen" | "inspect";
 
 /** El bloqueo de teclado (sólo en pantalla completa): así Esc llega a la página en vez de soltar el mouse. */
 const keyboardLock = (): { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void } | undefined =>
@@ -222,6 +222,7 @@ export class InputController {
 
       if (e.code === "KeyR") this.reloadQueued = true;
       if (e.code === "KeyQ" && !e.repeat) this.intents.push("lastWeapon");
+      if (e.code === "KeyF" && !e.repeat) this.intents.push("inspect");
       if (JUMP.has(e.code) && !e.repeat) this.jumpQueued = true;
       const action = ACTION_KEYS[e.code];
       if (action !== undefined && !e.repeat) this.pendingAction = action;

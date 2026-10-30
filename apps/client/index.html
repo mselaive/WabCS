@@ -22,7 +22,7 @@
       <div id="scope" class="scope" hidden><div class="scope-h"></div><div class="scope-v"></div></div>
 
       <div id="damageDir" class="damage-dir" hidden></div>
-      <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i></div>
+      <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i><b></b></div>
       <div id="hitmarker" class="hitmarker"><i></i><i></i><i></i><i></i></div>
 
       <div id="roundBar" class="round-bar">
@@ -57,6 +57,22 @@
           <span>Sensibilidad del mouse <small id="pauseSensValue"></small></span>
           <input id="pauseSensInput" type="range" min="2" max="40" step="1" value="11" />
         </label>
+        <div class="field">
+          <span>Mira</span>
+          <div class="mode-row compact" role="radiogroup" aria-label="Mira">
+            <button class="mode-btn" type="button" role="radio" data-crosshair="dynamic" title="Se abre con la imprecisión real: moverse, saltar, disparar seguido">Dinámica</button>
+            <button class="mode-btn" type="button" role="radio" data-crosshair="static" title="Una cruz fija en el medio">Fija</button>
+            <button class="mode-btn" type="button" role="radio" data-crosshair="dot" title="Un punto en el medio">Punto</button>
+          </div>
+          <div class="swatches" role="radiogroup" aria-label="Color de la mira">
+            <button class="swatch" type="button" role="radio" data-crosscolor="#7cff9b" style="--c: #7cff9b" title="Verde"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#ffffff" style="--c: #ffffff" title="Blanco"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#7fd3ff" style="--c: #7fd3ff" title="Celeste"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#ffe066" style="--c: #ffe066" title="Amarillo"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#ff7ad9" style="--c: #ff7ad9" title="Rosa"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#ff5c5c" style="--c: #ff5c5c" title="Rojo"></button>
+          </div>
+        </div>
         <label class="check"><input id="pauseFullscreen" type="checkbox" /> Pantalla completa (así Esc no suelta el mouse)</label>
         <div class="pause-actions">
           <button id="btnResume" class="btn btn-primary" type="button">Seguir jugando</button>
@@ -122,6 +138,23 @@
           <span>Sensibilidad del mouse <small id="sensValue"></small></span>
           <input id="sensInput" type="range" min="2" max="40" step="1" value="11" />
         </label>
+
+        <div class="field">
+          <span>Mira</span>
+          <div class="mode-row compact" role="radiogroup" aria-label="Mira">
+            <button class="mode-btn" type="button" role="radio" data-crosshair="dynamic" title="Se abre con la imprecisión real: moverse, saltar, disparar seguido">Dinámica</button>
+            <button class="mode-btn" type="button" role="radio" data-crosshair="static" title="Una cruz fija en el medio">Fija</button>
+            <button class="mode-btn" type="button" role="radio" data-crosshair="dot" title="Un punto en el medio">Punto</button>
+          </div>
+          <div class="swatches" role="radiogroup" aria-label="Color de la mira">
+            <button class="swatch" type="button" role="radio" data-crosscolor="#7cff9b" style="--c: #7cff9b" title="Verde"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#ffffff" style="--c: #ffffff" title="Blanco"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#7fd3ff" style="--c: #7fd3ff" title="Celeste"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#ffe066" style="--c: #ffe066" title="Amarillo"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#ff7ad9" style="--c: #ff7ad9" title="Rosa"></button>
+            <button class="swatch" type="button" role="radio" data-crosscolor="#ff5c5c" style="--c: #ff5c5c" title="Rojo"></button>
+          </div>
+        </div>
 
         <label class="check" title="En pantalla completa el navegador nos deja quedarnos con la tecla Esc: abre la pausa en vez de soltar el mouse">
           <input id="fullscreenInput" type="checkbox" /> Pantalla completa al jugar (así Esc no suelta el mouse)
@@ -189,6 +222,8 @@
           <span class="mode-label">Modo</span>
           <button class="mode-btn" type="button" role="radio" data-mode="0" title="Gana la ronda el que elimina al otro equipo">Eliminación</button>
           <button class="mode-btn" type="button" role="radio" data-mode="1" title="Los T plantan la C4 en A o B; los CT la desactivan">Bomba</button>
+          <button class="mode-btn" type="button" role="radio" data-mode="2" title="Rondas de eliminación con AWP y cuchillo para todos, sin compras">Sólo AWP</button>
+          <button class="mode-btn" type="button" role="radio" data-mode="3" title="Se reaparece; cada baja da la siguiente arma y la baja con el cuchillo gana">Carrera de armas</button>
         </div>
 
         <div id="roundsRow" class="mode-row" role="radiogroup" aria-label="Rondas para ganar">

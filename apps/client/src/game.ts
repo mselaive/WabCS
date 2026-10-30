@@ -21,6 +21,8 @@ import {
   HIT_WORLD,
   INTERP_DELAY_MS,
   KNIFE,
+  MODE_ARMS,
+  MODE_AWP,
   MS_PER_TICK,
   PICKUP_RANGE,
   PLAYER_HALF_W,
@@ -115,6 +117,8 @@ export class Game {
   private prevActive = -1;
   private lastSlot = 1;
   private deathInfo: string | null = null;
+  /** Cuándo moriste (reloj del navegador), para la cuenta de la reaparición. */
+  private diedAtMs = 0;
   private spectateIndex = 0;
   private freeCam = false;
   private readonly freePos = new THREE.Vector3();
@@ -521,6 +525,7 @@ export class Game {
         this.spawnCorpse(ev.targetId);
         if (ev.byId === this.myId && ev.targetId !== this.myId) this.audio.kill();
         if (ev.targetId === this.myId) {
+          this.diedAtMs = performance.now();
           const killer = this.buffer.latest?.players.get(ev.byId);
           const left = killer ? ` · le quedaban <b>${killer.hp}</b> de vida` : "";
           this.deathInfo = ev.weapon === FALL_WEAPON ? "Te caíste de muy alto." : `Te mató <b>${this.ui.nameOf(ev.byId)}</b> con ${weapon(ev.weapon).name}${ev.headshot ? " (en la cabeza)" : ""}${left}`;
@@ -717,16 +722,22 @@ export class Game {
   private handleIntents(): void {
     for (const intent of this.input.takeIntents()) {
       switch (intent) {
-        case "buy":
+        case "buy": {
+          const noShop = this.latestRound?.mode === MODE_AWP || this.latestRound?.mode === MODE_ARMS;
           if (this.ui.isBuyOpen) this.ui.closeBuy();
-          else if (this.phase === "playing" && this.predictor?.state.alive) this.ui.openBuy(this.myTeam, this.predictor.state.money);
+          else if (this.phase === "playing" && this.predictor?.state.alive && !noShop) this.ui.openBuy(this.myTeam, this.predictor.state.money);
           break;
+        }
         case "pause":
           // Esc en pantalla completa: se suelta el mouse a propósito y la pausa aparece al notarlo.
           this.input.releaseLock();
           break;
         case "exitFullscreen":
           this.input.exitFullscreen();
+          break;
+        case "inspect":
+          // Mirar el arma (F): sólo vivo y sin estar recargando; cualquier tiro la corta.
+          if (this.predictor?.state.alive && !this.predictor.state.reloading) this.viewModel.inspect();
           break;
         case "scoreboardOn":
           this.ui.setScoreboard(true);
@@ -1070,10 +1081,15 @@ export class Game {
       if (s[4] === TEAM_T) aliveT++;
       else aliveCT++;
     }
-    this.ui.setRound(round.number, round.phase, round.ticksLeft, round.score, round.winRounds, aliveT, aliveCT);
+    this.ui.setRound(round.number, round.phase, round.ticksLeft, round.score, round.winRounds, aliveT, aliveCT, round.mode);
   }
 
   private updateBuyHint(round: UnpackedRound, x: number, z: number, team: number): void {
+    if (round.mode === MODE_AWP || round.mode === MODE_ARMS) {
+      // Sin tienda: sólo la cuenta regresiva.
+      this.ui.setFreezeInfo(round.phase === "freeze" ? `Arranca en ${Math.ceil(round.ticksLeft / 20)} s` : null);
+      return;
+    }
     if (round.phase === "freeze") {
       this.ui.setFreezeInfo(`Tiempo de compra: ${Math.ceil(round.ticksLeft / 20)} s · B para comprar`);
       return;
@@ -1131,7 +1147,11 @@ export class Game {
   /** Muerto: con los ojos de un compañero vivo, o una cámara libre desde donde caíste. */
   private spectate(frame: InterpolatedFrame | null, dt: number): void {
     const mates = frame ? frame.players.filter((p) => p.alive && p.connected && p.team === this.myTeam && p.id !== this.myId) : [];
-    const info = this.deathInfo ?? "Esperando la próxima ronda";
+    let info = this.deathInfo ?? "Esperando la próxima ronda";
+    if (this.latestRound?.mode === MODE_ARMS) {
+      const left = Math.max(0, Math.ceil((this.diedAtMs + 3000 - performance.now()) / 1000));
+      info = `${this.deathInfo ?? ""}<small>Volvés en ${left} s</small>`;
+    }
     if (mates.length > 0 && !this.freeCam) {
       const target = mates[this.spectateIndex % mates.length]!;
       this.camera.position.set(target.x, target.y + eyeHeightOf(target), target.z);

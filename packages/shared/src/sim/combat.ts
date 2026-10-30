@@ -1,4 +1,5 @@
 import {
+  MODE_ARMS,
   ACT_GRENADE_BASE,
   ACT_SLOT_0,
   ACT_SLOT_2,
@@ -427,8 +428,11 @@ export function damagePlayer(
     by.money = Math.min(MAX_MONEY, by.money + killReward(wid));
   }
   // Las armas quedan en el piso: el rival (o el compañero) las puede levantar.
-  for (let s = 0; s < 2; s++) {
-    if ((target.slots[s] ?? -1) >= 0) dropWeaponAt(state, target, s, map, s === 0 ? 0.4 : -0.4);
+  // En la carrera de armas no: cada uno juega con la de su nivel.
+  if (state.mode !== MODE_ARMS) {
+    for (let s = 0; s < 2; s++) {
+      if ((target.slots[s] ?? -1) >= 0) dropWeaponAt(state, target, s, map, s === 0 ? 0.4 : -0.4);
+    }
   }
   // Y la bomba, si la llevaba.
   if (target.hasBomb) {

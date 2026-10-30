@@ -1,4 +1,6 @@
 import {
+  MODE_ARMS,
+  MODE_AWP,
   ACT_BUY_BASE,
   ACT_GRENADE_BASE,
   ACT_NONE,
@@ -255,7 +257,7 @@ export function botInput(state: GameState, me: PlayerState, mem: BotMemory, map:
   // ---- Tiempo de compra: comprar y mirar hacia el centro.
   if (state.round.phase === "freeze") {
     if (mem.boughtRound !== state.round.number) {
-      const item = shopping(me, rng);
+      const item = state.mode === MODE_AWP || state.mode === MODE_ARMS ? -1 : shopping(me, rng);
       if (item >= 0) input.act = ACT_BUY_BASE + item;
       else mem.boughtRound = state.round.number;
       // Al empezar la ronda, de cero: nada de lo anterior sirve.

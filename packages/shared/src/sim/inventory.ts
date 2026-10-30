@@ -1,4 +1,4 @@
-import { BUY_RADIUS, BUY_TICKS, DROP_TICKS, GRENADE_MAX, PICKUP_RANGE, ROUND_TICKS, TEAM_CT } from "../constants.js";
+import { MODE_ARMS, MODE_AWP, BUY_RADIUS, BUY_TICKS, DROP_TICKS, GRENADE_MAX, PICKUP_RANGE, ROUND_TICKS, TEAM_CT } from "../constants.js";
 import { distXZ } from "../math.js";
 import type { GameMap } from "../map/types.js";
 import { BUY_ITEMS, KNIFE, SLOT_GRENADE, SLOT_KNIFE, weapon } from "../weapons.js";
@@ -10,6 +10,8 @@ const MAX_DROPS = 24;
 /** ¿Se puede comprar ahora, desde donde está? */
 export function canBuy(state: GameState, p: PlayerState, map: GameMap): boolean {
   if (state.phase !== "playing" || !p.alive) return false;
+  // Sólo AWP y carrera de armas reparten las armas: no hay tienda.
+  if (state.mode === MODE_AWP || state.mode === MODE_ARMS) return false;
   const r = state.round;
   if (r.phase === "over") return false;
   if (r.phase === "live" && ROUND_TICKS - r.ticksLeft > BUY_TICKS) return false;

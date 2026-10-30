@@ -81,6 +81,7 @@ con `--manso` no disparan, para probar tus tiros tranquilo.
 | `1` / `2` / `3` | principal, pistola, cuchillo |
 | `4` / `5` / `6` | granada HE, flash, humo (click para tirarla) |
 | `Q` | la última arma que tenías |
+| `F` | mirar el arma (el cuchillo da una vuelta) |
 | `B` | menú de compra: `1`-`6` armas, `7`-`9` granadas, `0` chaleco, `C` casco (en el tiempo de compra y los primeros 10 s, cerca de tu spawn) |
 | `E` | levantar el arma del piso que tengas adelante; sostenida, plantar o desactivar la bomba |
 | `G` | tirar el arma que tenés en la mano |
@@ -119,6 +120,25 @@ la levanta al pasar. Plantar paga $800 aunque se pierda la ronda.
 Los bots juegan el modo: los T van todos al sitio de la ronda y el que la lleva la planta; los CT
 guardan un sitio, se compran el kit y, plantada, van a desactivarla (`sim/bomb.ts`, `bombGoal`
 en `sim/bot.ts`).
+
+### Sólo AWP
+
+Rondas de eliminación, pero todos arrancan cada ronda con **AWP, cuchillo, chaleco y casco**, y no
+hay tienda (el dinero no sirve para nada). Un tiro al cuerpo mata, así que es puntería y paciencia.
+
+### Carrera de armas
+
+No hay rondas ni compras: se **reaparece a los 3 segundos** en el lado propio, con chaleco y casco,
+y cada baja te da **la siguiente arma de la escalera**: Glock, USP, Deagle, Nova, MP5, M4, AK, AWP
+y, al final, **el cuchillo**. La baja con el cuchillo termina el partido y lo gana tu equipo. El
+marcador de arriba muestra el nivel más alto de cada equipo; las armas de los muertos no quedan en
+el piso (cada uno juega con la de su nivel). Los bots juegan igual que en eliminación, sin comprar.
+
+### La mira
+
+En el menú y en la pausa se elige: **dinámica** (se abre con la imprecisión real: moverse, saltar,
+disparar seguido; es la que enseña cuándo no conviene tirar), **fija** (una cruz quieta) o
+**punto**, y el color. Queda guardado en el navegador.
 
 ### Dinero
 

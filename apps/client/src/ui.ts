@@ -46,6 +46,8 @@ const NAME_KEY = "wabcs:name";
 const VOLUME_KEY = "wabcs:volume";
 // (La clave cambió cuando la opción pasó a estar apagada de entrada: lo guardado antes no cuenta.)
 const FULLSCREEN_KEY = "wabcs:fullscreenOn";
+const CROSS_KEY = "wabcs:crosshair";
+const CROSS_COLOR_KEY = "wabcs:crosscolor";
 const SENS_KEY = "wabcs:sens";
 
 function load(key: string): string | null {
@@ -138,6 +140,33 @@ export class UI {
     };
     for (const i of fsInputs) i.addEventListener("change", () => applyFullscreen(i.checked));
     applyFullscreen(load(FULLSCREEN_KEY) === "1");
+
+    // La mira: dinámica, fija o punto, y su color. En el menú y en la pausa a la vez.
+    this.crossStyle = load(CROSS_KEY) ?? "dynamic";
+    this.crossColor = load(CROSS_COLOR_KEY) ?? "#7cff9b";
+    const applyCross = () => {
+      for (const b of document.querySelectorAll<HTMLButtonElement>("[data-crosshair]")) b.setAttribute("aria-checked", String(b.dataset.crosshair === this.crossStyle));
+      for (const b of document.querySelectorAll<HTMLButtonElement>("[data-crosscolor]")) b.setAttribute("aria-checked", String(b.dataset.crosscolor === this.crossColor));
+      const ch = $("crosshair");
+      ch.classList.toggle("dot", this.crossStyle === "dot");
+      ch.style.setProperty("--cross-color", this.crossColor);
+      this.lastGap = -1;
+      save(CROSS_KEY, this.crossStyle);
+      save(CROSS_COLOR_KEY, this.crossColor);
+    };
+    for (const b of document.querySelectorAll<HTMLButtonElement>("[data-crosshair]")) {
+      b.addEventListener("click", () => {
+        this.crossStyle = b.dataset.crosshair ?? "dynamic";
+        applyCross();
+      });
+    }
+    for (const b of document.querySelectorAll<HTMLButtonElement>("[data-crosscolor]")) {
+      b.addEventListener("click", () => {
+        this.crossColor = b.dataset.crosscolor ?? "#7cff9b";
+        applyCross();
+      });
+    }
+    applyCross();
 
     $("btnResume").addEventListener("click", () => cb.onResume());
     $("btnFullscreenOff").addEventListener("click", () => cb.onExitFullscreen());
@@ -516,12 +545,15 @@ export class UI {
   }
 
   private lastGap = -1;
+  /** "dynamic" (se abre con la dispersión), "static" o "dot". */
+  private crossStyle = "dynamic";
+  private crossColor = "#7cff9b";
 
   /** `spread` en radianes: la mira se abre proporcionalmente. */
   setCrosshair(visible: boolean, spread: number): void {
     const ch = $("crosshair");
     ch.hidden = !visible;
-    const gap = Math.round(Math.min(60, 3 + spread * 700));
+    const gap = this.crossStyle === "dynamic" ? Math.round(Math.min(60, 3 + spread * 700)) : 4;
     if (gap !== this.lastGap) {
       this.lastGap = gap;
       ch.style.setProperty("--gap", `${gap}px`);
@@ -532,18 +564,20 @@ export class UI {
     $("scope").hidden = !on;
   }
 
-  setRound(number: number, phase: "freeze" | "live" | "over", ticksLeft: number, score: [number, number], winRounds: number, aliveT: number, aliveCT: number): void {
+  setRound(number: number, phase: "freeze" | "live" | "over", ticksLeft: number, score: [number, number], winRounds: number, aliveT: number, aliveCT: number, mode = 0): void {
     $("scoreT").textContent = String(score[0]);
     $("scoreCT").textContent = String(score[1]);
+    const arms = mode === 3;
     const seconds = Math.max(0, Math.ceil(ticksLeft / 20));
-    const time = phase === "over" ? "0:00" : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    // La carrera de armas no tiene reloj una vez que arranca.
+    const time = phase === "over" ? "0:00" : arms && phase === "live" ? "∞" : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
     const timeEl = $("roundTime");
     // Con la bomba plantada el reloj lo escribe setBombClock.
     if (!timeEl.classList.contains("bomb")) {
       if (timeEl.textContent !== time) timeEl.textContent = time;
       timeEl.classList.toggle("urgent", phase === "live" && seconds <= 10);
     }
-    const rt = `Ronda ${number} · a ${winRounds}`;
+    const rt = arms ? `Carrera de armas · nivel ${score[0]} - ${score[1]} de ${winRounds}` : `Ronda ${number} · a ${winRounds}`;
     if (this.lastRoundText !== rt) {
       this.lastRoundText = rt;
       $("roundNumber").textContent = rt;

@@ -37,6 +37,8 @@ Lo que hay, lo que quedó en la lista y por qué. Primera versión: 28 de octubr
 | Manos | Pistolas a dos manos; la izquierda saca el cargador y bombea, la derecha trabaja el cerrojo | Capturas |
 | Bots en los techos | Grilla por niveles: suben por la escalera, patrullan arriba, bajan de un salto si hace falta | Test + `server-bots` |
 | Daño por caída y pagos por arma | Caerse de más de 2 m duele (del techo, ~25); matar con AWP paga $100, MP5 $600, escopeta $900 | 3 tests |
+| Sólo AWP y carrera de armas | Dos modos más: rondas con AWP para todos; reaparición con escalera de armas, gana la baja con cuchillo | 2 tests |
+| Mira e inspección | Mira dinámica, fija o punto, con color, en menú y pausa; F mira el arma (el cuchillo gira) | Navegador |
 | Silbido de balas | Las balas ajenas que pasan a menos de 2 m se oyen pasar | **No lo escuché** (ver sonido) |
 
 ## Lo que falta, en orden

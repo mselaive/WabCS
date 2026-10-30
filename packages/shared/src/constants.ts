@@ -136,6 +136,14 @@ export const GRENADE_MAX = [1, 2, 1] as const;
 /** Modos de juego: eliminación (gana el que elimina al otro) o bomba. */
 export const MODE_ELIM = 0;
 export const MODE_BOMB = 1;
+/** Sólo AWP: rondas como en eliminación, pero todos con AWP y cuchillo, sin compras. */
+export const MODE_AWP = 2;
+/** Carrera de armas: se reaparece, cada baja da la siguiente arma, la baja con el cuchillo gana el partido. */
+export const MODE_ARMS = 3;
+/** La escalera de la carrera de armas, por bajas: Glock, USP, Deagle, Nova, MP5, M4, AK, AWP y cuchillo. */
+export const ARMS_LADDER: readonly number[] = [1, 2, 3, 7, 4, 6, 5, 8, 0];
+/** Ticks muerto antes de reaparecer en la carrera de armas (3 s). */
+export const ARMS_RESPAWN_TICKS = 60;
 /** Plantar: sostener E dentro del sitio. Desactivar: sostener E al lado de la bomba. */
 export const BOMB_PLANT_TICKS = Math.round(3.5 * TICK_RATE);
 export const BOMB_DEFUSE_TICKS = 10 * TICK_RATE;
