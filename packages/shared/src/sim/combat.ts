@@ -275,8 +275,8 @@ export function applyArmor(p: PlayerState, dmg: number, zone: number, pen: numbe
   if (p.armor <= 0) return dmg;
   if (zone === ZONE_LEGS) return dmg;
   if (zone === ZONE_HEAD && !p.helmet) return dmg;
-  const ratio = pen * 0.5;
-  let after = dmg * ratio;
+  // `pen` ya es el porcentaje de CS (AWP 97,5 %, AK 77,5 %): es lo que pasa del chaleco al cuerpo.
+  let after = dmg * pen;
   let loss = (dmg - after) * 0.5;
   if (loss > p.armor) {
     after = dmg - p.armor * 2;

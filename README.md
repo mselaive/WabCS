@@ -187,6 +187,8 @@ ven a través.
 El daño cae con la distancia (cada arma a su ritmo: la escopeta pierde la mitad cada 10 m, el AK
 casi nada) y según dónde pega: **cabeza ×4**, cuerpo ×1, piernas ×0,75. El chaleco absorbe parte
 del daño al cuerpo (y a la cabeza, con casco) y se va gastando; las piernas no tienen chaleco.
+El AWP mata de un tiro al cuerpo o a la cabeza aunque haya chaleco (a las piernas deja 86), y el
+AK a la cabeza mata con casco puesto; el M4 no, como en CS.
 Las fórmulas son las de CS (`applyArmor` en `combat.ts`).
 
 **Paredes finas** (`bulletSegments`): los rifles y la Deagle atraviesan tabiques finos (el AK hasta
