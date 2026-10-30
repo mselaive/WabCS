@@ -53,6 +53,10 @@ const ui = new UI({
 });
 
 game = new Game(ui);
+// La interfaz leyó lo guardado antes de que existiera el juego: se le pasa ahora.
+game.setVolume(ui.volume);
+game.setSensitivity(ui.sensitivity);
+game.setFullscreen(ui.fullscreen);
 // Para mirar el estado desde la consola del navegador: `wabcs.debugState()`.
 (window as unknown as { wabcs: Game }).wabcs = game;
 

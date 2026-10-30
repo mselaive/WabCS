@@ -44,7 +44,8 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
 
 const NAME_KEY = "wabcs:name";
 const VOLUME_KEY = "wabcs:volume";
-const FULLSCREEN_KEY = "wabcs:fullscreen";
+// (La clave cambió cuando la opción pasó a estar apagada de entrada: lo guardado antes no cuenta.)
+const FULLSCREEN_KEY = "wabcs:fullscreenOn";
 const SENS_KEY = "wabcs:sens";
 
 function load(key: string): string | null {
@@ -136,7 +137,7 @@ export class UI {
       cb.onFullscreen(on);
     };
     for (const i of fsInputs) i.addEventListener("change", () => applyFullscreen(i.checked));
-    applyFullscreen(load(FULLSCREEN_KEY) !== "0");
+    applyFullscreen(load(FULLSCREEN_KEY) === "1");
 
     $("btnResume").addEventListener("click", () => cb.onResume());
     $("btnFullscreenOff").addEventListener("click", () => cb.onExitFullscreen());
@@ -570,16 +571,29 @@ export class UI {
    */
   private pauseRetry = false;
 
+  /** Los valores guardados, para que el juego arranque con ellos (la interfaz se arma antes que el juego). */
+  get volume(): number {
+    return Number($<HTMLInputElement>("volumeInput").value) / 100;
+  }
+
+  get sensitivity(): number {
+    return Number($<HTMLInputElement>("sensInput").value) / 10;
+  }
+
+  get fullscreen(): boolean {
+    return $<HTMLInputElement>("fullscreenInput").checked;
+  }
+
   setPause(visible: boolean, retry = false): void {
     this.pauseRetry = retry;
     $("pausePanel").hidden = !visible;
     const fs = document.fullscreenElement !== null;
     $("btnFullscreenOff").hidden = !fs;
     $("pauseHint").textContent = retry
-      ? "El navegador pide esperar un segundo: volvé a hacer click en Seguir."
+      ? "No se pudo capturar el mouse (pasa si se acaba de soltar o al cambiar de pantalla): hacé click de nuevo."
       : fs
         ? "Esc otra vez sale de pantalla completa (o mantenelo apretado). Para seguir, click en Seguir jugando."
-        : "Fuera de pantalla completa, Esc suelta el mouse. Hacé click en Seguir para volver.";
+        : "Esc suelta el mouse; hacé click en Seguir para volver. Con pantalla completa, Esc abre esta pausa sin soltarlo.";
   }
 
   setSpectating(html: string | null): void {

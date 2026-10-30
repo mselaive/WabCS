@@ -163,7 +163,10 @@ export class Game {
     this.lobbyCamera();
 
     this.input.attach(this.stage);
-    document.addEventListener("pointerlockchange", () => this.onLockChange());
+    document.addEventListener("pointerlockchange", () => {
+      this.input.onLockChange();
+      this.onLockChange();
+    });
     window.addEventListener("mousedown", () => this.audio.unlock(), { passive: true });
     window.addEventListener("keydown", (e) => this.onUiKey(e));
     window.addEventListener("resize", () => this.resize());

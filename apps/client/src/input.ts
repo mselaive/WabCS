@@ -89,7 +89,7 @@ export class InputController {
    * Jugar en pantalla completa. Es la única forma de que Esc no suelte el
    * mouse: ahí el navegador deja bloquear esa tecla y la usamos para la pausa.
    */
-  fullscreenWanted = true;
+  fullscreenWanted = false;
   /** La última captura la rechazó el navegador porque se acababa de soltar (Esc): en un segundo se puede de nuevo. */
   lockRetryHint = false;
 
@@ -109,10 +109,11 @@ export class InputController {
     if (focused instanceof HTMLElement && focused !== document.body) focused.blur();
 
     const failed = (err: unknown) => {
-      // "SecurityError" es que el usuario acaba de soltar la captura (Esc): el
-      // navegador pide esperar un instante. Cualquier otra cosa es que acá no se puede.
-      if (err instanceof DOMException && err.name === "SecurityError") this.lockRetryHint = true;
-      else this.lockFailed = true;
+      // Sólo "WrongDocumentError" (una vista embebida) quiere decir que acá no hay
+      // captura y se juega sin ella. Todo lo demás es pasajero (se acaba de soltar
+      // con Esc, la pantalla completa todavía está cambiando): se pide un click más.
+      if (err instanceof DOMException && err.name === "WrongDocumentError") this.lockFailed = true;
+      else this.lockRetryHint = true;
     };
     const lockPointer = () => {
       this.lockRetryHint = false;
@@ -134,27 +135,29 @@ export class InputController {
     };
 
     if (this.fullscreenWanted && !document.fullscreenElement && document.fullscreenEnabled) {
-      // Primero la pantalla completa, después el bloqueo de Esc y la captura del
-      // mouse (el gesto del click sigue valiendo unos segundos).
-      // Si el navegador no contesta rápido (una vista embebida que no puede ir a
-      // pantalla completa se queda pensando), se pide la captura igual.
-      let done = false;
-      const next = () => {
-        if (done) return;
-        done = true;
-        if (document.fullscreenElement) keyboardLock()?.lock?.(["Escape"])?.catch(() => {});
-        lockPointer();
-      };
-      document.documentElement.requestFullscreen({ navigationUI: "hide" }).then(next, next);
-      setTimeout(next, 700);
-      return;
+      // Pantalla completa y, cuando entra, el bloqueo de Esc. La captura del mouse
+      // se pide ya mismo con el mismo click: si el cambio de pantalla la tira
+      // (Chrome lo hace a veces), la pausa queda a la vista y el próximo click la vuelve a pedir.
+      document.documentElement.requestFullscreen({ navigationUI: "hide" }).then(
+        () => keyboardLock()?.lock?.(["Escape"])?.catch(() => {}),
+        () => {},
+      );
+    } else if (document.fullscreenElement) {
+      keyboardLock()?.lock?.(["Escape"])?.catch(() => {});
     }
-    if (document.fullscreenElement) keyboardLock()?.lock?.(["Escape"])?.catch(() => {});
     lockPointer();
   }
 
   releaseLock(): void {
     if (this.locked) document.exitPointerLock();
+  }
+
+  /** El navegador avisó que cambió la captura: si está puesta, los fallos anteriores quedan olvidados. */
+  onLockChange(): void {
+    if (this.locked) {
+      this.lockFailed = false;
+      this.lockRetryHint = false;
+    }
   }
 
   /** Salir de pantalla completa (y devolverle Esc al navegador). */
@@ -182,6 +185,11 @@ export class InputController {
         // navegador ya soltó el mouse y mostramos la pausa igual al notarlo.
         e.preventDefault();
         if (this.uiBusy || e.repeat) return;
+        if (this.lockFailed) {
+          // Jugando sin captura: Esc abre la pausa y el próximo click vuelve a intentar capturar.
+          this.lockFailed = false;
+          return;
+        }
         // Jugando: pausa (se suelta el mouse). Ya en pausa: Esc otra vez sale de pantalla completa.
         this.intents.push(this.active ? "pause" : "exitFullscreen");
         return;
