@@ -18,7 +18,7 @@ import {
   TEAM_T,
   WIN_REWARD,
 } from "../constants.js";
-import { AK47, AWP, GLOCK, KNIFE, M4A4, USP, buyItemIndex } from "../weapons.js";
+import { AK47, AWP, GLOCK, KNIFE, M4A4, USP, buyItemIndex, weapon } from "../weapons.js";
 import { damagePlayer } from "./combat.js";
 import { canBuy } from "./inventory.js";
 import { createGameState, createPlayer, step } from "./step.js";
@@ -104,6 +104,25 @@ describe("las rondas", () => {
     run(state, events, ROUND_OVER_TICKS);
     expect(t!.slots[0]).toBe(AK47);
     expect(ct!.slots[0]).toBe(-1);
+  });
+
+  it("el que sobrevive arranca la ronda con el cargador y la reserva llenos", () => {
+    const { state, events } = match();
+    const [t, ct] = state.players;
+    t!.slots[0] = AK47;
+    t!.active = 0;
+    t!.ammo[0] = 3;
+    t!.reserve[0] = 10;
+    t!.ammo[1] = 0;
+    t!.reloading = true;
+    run(state, events, FREEZE_TICKS);
+    ct!.alive = false;
+    step(state, noInputs, events, BODEGA);
+    run(state, events, ROUND_OVER_TICKS);
+    expect(t!.ammo[0]).toBe(weapon(AK47).mag);
+    expect(t!.reserve[0]).toBe(weapon(AK47).reserve);
+    expect(t!.ammo[1]).toBe(weapon(GLOCK).mag);
+    expect(t!.reloading).toBe(false);
   });
 
   it("a la mitad se cambia de lado y el partido termina al llegar a las rondas", () => {

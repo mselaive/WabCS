@@ -176,6 +176,13 @@ function placeAtSpawn(p: PlayerState, s: { x: number; y: number; z: number; yaw:
   p.fallImpact = 0;
   p.diedAtTick = -1;
   p.killerId = -1;
+  // Cada ronda arranca con las armas cargadas y la reserva llena, también para el que sobrevivió.
+  for (let slot = 0; slot < p.slots.length; slot++) {
+    const w = p.slots[slot] ?? -1;
+    if (w < 0) continue;
+    p.ammo[slot] = weapon(w).mag;
+    p.reserve[slot] = weapon(w).reserve;
+  }
   // Si no tiene nada en la mano (se le fue la principal), que agarre algo.
   if ((p.slots[p.active] ?? -1) < 0) p.active = (p.slots[0] ?? -1) >= 0 ? 0 : (p.slots[SLOT_SECONDARY] ?? -1) >= 0 ? SLOT_SECONDARY : SLOT_KNIFE;
   resetTrail(p);

@@ -150,7 +150,8 @@ disparar seguido; es la que enseña cuándo no conviene tirar), **fija** (una cr
 | Kill | +$300; con el AWP $100, con la MP5 $600, con la escopeta $900, con el cuchillo $1500 |
 | Tope | $16 000 |
 
-El que sobrevive **conserva** sus armas, su munición y su chaleco. El que muere arranca la ronda
+El que sobrevive **conserva** sus armas y su chaleco, y arranca la ronda con los cargadores y la
+reserva llenos. El que muere arranca la ronda
 siguiente con la pistola de su equipo y el cuchillo. Las armas del que cae quedan en el piso:
 cualquiera las levanta con `E` (y las propias se tiran con `G`, para pasarle el rifle al compañero).
 
