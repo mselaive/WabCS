@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { AK47, AWP, DEAGLE, GLOCK, KNIFE, M4A4, MP5, NOVA, USP, weapon } from "@wabcs/shared";
+import { AK47, AWP, DEAGLE, GLOCK, KNIFE, M4A1S, MP5, NOVA, SKIN_EMERALD, SKIN_RUBY, SKIN_SAPPHIRE, TEAM_CT, TEAM_T, USP, isSilenced, weapon } from "@wabcs/shared";
 
 /**
  * Armas hechas de cajas y cilindros, sin modelos externos. El caño apunta a -Z
@@ -11,6 +11,8 @@ interface Mat {
   color: number;
   metal?: number;
   rough?: number;
+  /** Luz propia (las gemas brillan un poco solas). */
+  emissive?: number;
 }
 
 const POLYMER: Mat = { color: 0x24272c, metal: 0.15, rough: 0.7 };
@@ -28,10 +30,10 @@ const SLEEVE: Mat = { color: 0x35404b, metal: 0, rough: 0.95 };
 
 const mats = new Map<string, THREE.MeshStandardMaterial>();
 function mat(m: Mat): THREE.MeshStandardMaterial {
-  const key = `${m.color}-${m.metal ?? 0}-${m.rough ?? 0.5}`;
+  const key = `${m.color}-${m.metal ?? 0}-${m.rough ?? 0.5}-${m.emissive ?? 0}`;
   let out = mats.get(key);
   if (!out) {
-    out = new THREE.MeshStandardMaterial({ color: m.color, metalness: m.metal ?? 0, roughness: m.rough ?? 0.5 });
+    out = new THREE.MeshStandardMaterial({ color: m.color, metalness: m.metal ?? 0, roughness: m.rough ?? 0.5, emissive: m.emissive ?? 0 });
     mats.set(key, out);
   }
   return out;
@@ -81,11 +83,117 @@ function pistol(g: THREE.Group, slideMat: Mat, frameMat: Mat, len: number, tall:
   sights(g, 0.03 + tall / 2, -len + 0.045, 0.02);
 }
 
+/** El acero de la hoja: el de siempre, o la gema que toca de vez en cuando (rubí, zafiro, esmeralda). */
+function bladeMat(skin: number): Mat {
+  switch (skin) {
+    case SKIN_RUBY:
+      return { color: 0xc1143a, metal: 0.75, rough: 0.12, emissive: 0x3c0512 };
+    case SKIN_SAPPHIRE:
+      return { color: 0x1f4fd6, metal: 0.75, rough: 0.12, emissive: 0x061540 };
+    case SKIN_EMERALD:
+      return { color: 0x19b060, metal: 0.75, rough: 0.12, emissive: 0x05401f };
+    default:
+      return BLADE;
+  }
+}
+
+/** Una punta de hoja: pirámide achatada apuntando a -Z (o girada `rx` más). */
+function bladeTip(g: THREE.Object3D, r: number, len: number, x: number, y: number, z: number, m: Mat, rx = 0): THREE.Mesh {
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(r, len, 4), mat(m));
+  tip.rotation.x = -Math.PI / 2 + rx;
+  tip.scale.set(0.32, 1, 1);
+  tip.position.set(x, y, z);
+  tip.castShadow = true;
+  g.add(tip);
+  return tip;
+}
+
+/**
+ * Un grupo para las piezas de un cuchillo, girado alrededor del punto donde lo
+ * agarra la mano (z = `grip`): así la hoja cruza la vista en vez de verse de punta.
+ * `lift` sube el conjunto (la mano tiene que ir al mismo punto).
+ */
+function posed(g: THREE.Group, grip: number, rx: number, ry: number, rz: number, lift = 0): THREE.Group {
+  const k = new THREE.Group();
+  k.position.set(0, lift, grip);
+  k.rotation.set(rx, ry, rz);
+  g.add(k);
+  const parts = new THREE.Group();
+  parts.position.set(0, 0, -grip);
+  k.add(parts);
+  return parts;
+}
+
+/** La bayoneta M9 de los T: hoja ancha con vaceo y punta recortada, sierra en el lomo, guarda con anillo, mango estriado. */
+function bayonetM9(root: THREE.Group, blade: Mat): [number, number, number] {
+  const g = posed(root, 0.04, 0.25, 0.55, 0.35);
+  const GRIP: Mat = { color: 0x3a4232, metal: 0.05, rough: 0.85 };
+  const GRIP_DARK: Mat = { color: 0x272c22, metal: 0.05, rough: 0.9 };
+  box(g, 0.03, 0.036, 0.125, 0, 0, 0.04, GRIP);
+  for (let i = 0; i < 6; i++) box(g, 0.033, 0.039, 0.005, 0, 0, -0.01 + i * 0.019, GRIP_DARK);
+  // Pomo con la muesca del cortaalambres.
+  box(g, 0.034, 0.04, 0.025, 0, 0, 0.113, STEEL);
+  box(g, 0.036, 0.012, 0.01, 0, 0.012, 0.127, STEEL_LIGHT);
+  // Guarda, con el anillo para el caño del fusil.
+  box(g, 0.014, 0.08, 0.012, 0, 0.004, -0.03, STEEL);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0035, 8, 16), mat(STEEL));
+  ring.position.set(0, 0.052, -0.03);
+  g.add(ring);
+  // Hoja: ancha, con el vaceo marcado y la punta recortada.
+  box(g, 0.005, 0.032, 0.15, 0, 0.002, -0.111, blade);
+  box(g, 0.0064, 0.006, 0.1, 0, 0.007, -0.1, STEEL);
+  bladeTip(g, 0.016, 0.06, 0, 0.002, -0.216, blade);
+  // La sierra del lomo.
+  for (let i = 0; i < 7; i++) box(g, 0.004, 0.006, 0.005, 0, 0.021, -0.05 - i * 0.0095, blade);
+  return [0, 0, 0.04];
+}
+
+/**
+ * El karambit de los CT: hoja curva como una garra, mango corto y anillo para el
+ * dedo en el pomo. Se agarra al revés: el mango vertical en el puño, el anillo
+ * asomando arriba y la hoja saliendo por abajo, curvada hacia adelante.
+ */
+function karambit(root: THREE.Group, blade: Mat): [number, number, number] {
+  const g = posed(root, 0.05, -Math.PI / 2 + 0.25, 0.45, -0.2, 0.06);
+  const GRIP: Mat = { color: 0x1d1f23, metal: 0.1, rough: 0.8 };
+  box(g, 0.022, 0.03, 0.1, 0, 0, 0.05, GRIP);
+  for (let i = 0; i < 4; i++) box(g, 0.024, 0.032, 0.004, 0, 0, 0.015 + i * 0.022, STEEL);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.004, 8, 18), mat(STEEL));
+  ring.rotation.y = Math.PI / 2;
+  ring.position.set(0, 0, 0.118);
+  g.add(ring);
+  // La hoja: tramos cortos que van girando (hacia +Y antes de posarla), cada vez más finos, y la punta.
+  let y = 0.002;
+  let z = 0;
+  let a = 0.15;
+  const len = 0.018;
+  for (let i = 0; i < 7; i++) {
+    const h = 0.022 - i * 0.0022;
+    const dy = Math.sin(a);
+    const dz = -Math.cos(a);
+    box(g, 0.004, h, len + 0.003, 0, y + (dy * len) / 2, z + (dz * len) / 2, blade, a);
+    y += dy * len;
+    z += dz * len;
+    a += 0.2;
+  }
+  const dy = Math.sin(a);
+  const dz = -Math.cos(a);
+  bladeTip(g, 0.0075, 0.03, 0, y + dy * 0.015, z + dz * 0.015, blade, a);
+  return [0, 0.06, 0.05];
+}
+
+export interface WeaponLook {
+  /** De quién es: cambia el cuchillo (bayoneta M9 los T, karambit los CT). */
+  team?: number;
+  /** La skin de la hoja (SKIN_*). */
+  skin?: number;
+}
+
 /**
  * Un arma hecha de cajas y cilindros. `firstPerson` agrega las manos y la
  * manga, que en tercera persona ya las tiene el muñeco.
  */
-export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
+export function buildWeaponMesh(id: number, firstPerson: boolean, look: WeaponLook = {}): THREE.Group {
   const g = new THREE.Group();
   g.name = `weapon-${id}`;
   let rightHand: [number, number, number] = [0, -0.06, 0.0];
@@ -93,16 +201,8 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
 
   switch (id) {
     case KNIFE: {
-      box(g, 0.028, 0.034, 0.12, 0, 0, 0.03, POLYMER);
-      for (let i = 0; i < 4; i++) box(g, 0.03, 0.003, 0.012, 0, -0.01 + i * 0.008, 0.03, STEEL);
-      box(g, 0.012, 0.05, 0.012, 0, 0, -0.035, STEEL);
-      box(g, 0.005, 0.03, 0.2, 0, 0.004, -0.14, BLADE);
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.06, 4), mat(BLADE));
-      tip.rotation.x = -Math.PI / 2;
-      tip.scale.set(0.32, 1, 1);
-      tip.position.set(0, 0.004, -0.27);
-      g.add(tip);
-      rightHand = [0, 0.0, 0.03];
+      const blade = bladeMat(look.skin ?? 0);
+      rightHand = (look.team ?? TEAM_T) === TEAM_CT ? karambit(g, blade) : bayonetM9(g, blade);
       break;
     }
     case GLOCK:
@@ -157,25 +257,45 @@ export function buildWeaponMesh(id: number, firstPerson: boolean): THREE.Group {
       leftHand = [0, -0.01, -0.3];
       break;
     }
-    case M4A4: {
-      box(g, 0.044, 0.065, 0.3, 0, 0.03, -0.06, POLYMER);
-      box(g, 0.044, 0.018, 0.3, 0, 0.07, -0.06, POLYMER);
-      box(g, 0.046, 0.05, 0.24, 0, 0.028, -0.33, POLYMER);
-      for (let i = 0; i < 4; i++) box(g, 0.05, 0.006, 0.24, 0, 0.0 + i * 0.019, -0.33, STEEL);
-      tube(g, 0.008, 0.26, 0, 0.038, -0.58, STEEL, 8);
-      tube(g, 0.011, 0.05, 0, 0.038, -0.7, STEEL_LIGHT, 8);
-      box(g, 0.03, 0.17, 0.05, 0, -0.06, -0.12, POLYMER, 0.05).name = "mag";
-      box(g, 0.03, 0.095, 0.042, 0, -0.045, 0.06, POLYMER, 0.28);
-      box(g, 0.004, 0.024, 0.04, 0, -0.016, -0.03, STEEL);
-      tube(g, 0.015, 0.2, 0, 0.045, 0.2, POLYMER, 8);
-      box(g, 0.04, 0.08, 0.14, 0, 0.02, 0.3, POLYMER);
-      // Mira de punto rojo.
-      box(g, 0.03, 0.03, 0.05, 0, 0.1, -0.1, POLYMER);
-      box(g, 0.026, 0.026, 0.004, 0, 0.1, -0.126, GLASS);
-      box(g, 0.012, 0.03, 0.012, 0, 0.09, -0.44, STEEL);
-      pin(g, 0.005, 0.06, 0.03, 0.05, 0.08, STEEL_LIGHT);
+    case M4A1S: {
+      const DARK: Mat = { color: 0x15171a, metal: 0.5, rough: 0.6 };
+      // Cajón inferior y superior, con el riel plano arriba.
+      box(g, 0.04, 0.048, 0.2, 0, 0.012, -0.03, POLYMER);
+      box(g, 0.042, 0.044, 0.22, 0, 0.056, -0.04, POLYMER);
+      box(g, 0.03, 0.012, 0.2, 0, 0.084, -0.04, STEEL);
+      for (let i = 0; i < 9; i++) box(g, 0.032, 0.004, 0.007, 0, 0.091, -0.13 + i * 0.022, POLYMER);
+      // Ventana de eyección y asistente de cierre del lado derecho; manija de carga atrás.
+      box(g, 0.004, 0.02, 0.06, 0.022, 0.052, -0.07, STEEL_LIGHT);
+      pin(g, 0.006, 0.02, 0.026, 0.056, -0.005, STEEL);
+      box(g, 0.034, 0.008, 0.03, 0, 0.076, 0.082, STEEL);
+      // Cargador de 20, gatillo con guardamonte y empuñadura.
+      box(g, 0.028, 0.15, 0.055, 0, -0.085, -0.1, STEEL, 0.1).name = "mag";
+      box(g, 0.004, 0.02, 0.005, 0, -0.022, -0.03, STEEL);
+      box(g, 0.004, 0.004, 0.065, 0, -0.034, -0.03, POLYMER);
+      box(g, 0.03, 0.095, 0.04, 0, -0.045, 0.06, POLYMER, 0.3);
+      // Tubo y culata retráctil.
+      tube(g, 0.016, 0.2, 0, 0.055, 0.17, POLYMER, 10);
+      box(g, 0.038, 0.085, 0.1, 0, 0.02, 0.26, POLYMER);
+      box(g, 0.03, 0.028, 0.12, 0, 0.068, 0.245, POLYMER);
+      box(g, 0.04, 0.1, 0.012, 0, 0.02, 0.316, DARK);
+      // Anillo delta, guardamanos redondo con sus rendijas, bloque de gases con el alza de poste.
+      tube(g, 0.031, 0.02, 0, 0.045, -0.16, STEEL, 12);
+      tube(g, 0.027, 0.17, 0, 0.045, -0.26, POLYMER, 12);
+      for (let i = 0; i < 2; i++) tube(g, 0.0285, 0.006, 0, 0.045, -0.21 - i * 0.07, STEEL, 12);
+      for (let i = 0; i < 3; i++) box(g, 0.058, 0.006, 0.03, 0, 0.045, -0.2 - i * 0.045, DARK);
+      box(g, 0.03, 0.034, 0.03, 0, 0.05, -0.38, STEEL);
+      box(g, 0.006, 0.04, 0.008, 0, 0.094, -0.38, STEEL);
+      box(g, 0.004, 0.03, 0.02, 0.013, 0.088, -0.38, STEEL);
+      box(g, 0.004, 0.03, 0.02, -0.013, 0.088, -0.38, STEEL);
+      // Alza trasera abatible, con su agujero.
+      box(g, 0.03, 0.02, 0.012, 0, 0.1, 0.05, STEEL);
+      box(g, 0.01, 0.01, 0.014, 0, 0.1, 0.05, DARK);
+      // Caño y silenciador.
+      tube(g, 0.008, 0.22, 0, 0.045, -0.49, STEEL, 8);
+      tube(g, 0.018, 0.18, 0, 0.045, -0.69, DARK, 12);
+      tube(g, 0.019, 0.01, 0, 0.045, -0.605, STEEL_LIGHT, 12);
       rightHand = [0, -0.07, 0.04];
-      leftHand = [0, -0.01, -0.32];
+      leftHand = [0, -0.005, -0.27];
       break;
     }
     case NOVA: {
@@ -288,8 +408,8 @@ export function muzzleOffset(id: number): THREE.Vector3 {
       return new THREE.Vector3(0, 0.035, -0.62);
     case AK47:
       return new THREE.Vector3(0, 0.045, -0.75);
-    case M4A4:
-      return new THREE.Vector3(0, 0.038, -0.73);
+    case M4A1S:
+      return new THREE.Vector3(0, 0.045, -0.78);
     case NOVA:
       return new THREE.Vector3(0, 0.055, -0.72);
     case AWP:
@@ -351,6 +471,8 @@ export class ViewModel {
   private reloadTotal = 1;
   private wasReloading = false;
   private knifeT = 0;
+  private team = TEAM_T;
+  private skin = 0;
   private inspectT = 0;
   private readonly inspectTotal = 1.7;
   private landDip = 0;
@@ -368,10 +490,24 @@ export class ViewModel {
     this.root.add(this.flash);
   }
 
+  /** De qué equipo soy y qué skin me tocó: cambia el cuchillo (bayoneta o karambit, y la hoja). */
+  setLook(team: number, skin: number): void {
+    if (team === this.team && skin === this.skin) return;
+    this.team = team;
+    this.skin = skin;
+    if (this.current === KNIFE) {
+      // Rehacer el cuchillo en la mano sin volver a sacarlo.
+      const drawT = this.drawT;
+      this.current = -1;
+      this.setWeapon(KNIFE);
+      this.drawT = drawT;
+    }
+  }
+
   setWeapon(id: number): void {
     if (id === this.current) return;
     if (this.mesh) this.root.remove(this.mesh);
-    this.mesh = buildWeaponMesh(id, true);
+    this.mesh = buildWeaponMesh(id, true, { team: this.team, skin: this.skin });
     this.root.add(this.mesh);
     this.current = id;
     const find = (name: string, home: THREE.Vector3): THREE.Object3D | null => {
@@ -603,7 +739,8 @@ export class ViewModel {
     if (this.flashLeft > 0) {
       this.flashLeft -= dt;
       this.flash.visible = true;
-      this.flash.scale.setScalar(0.8 + Math.random() * 0.6);
+      // Las silenciadas apenas chispean.
+      this.flash.scale.setScalar((0.8 + Math.random() * 0.6) * (isSilenced(this.current) ? 0.4 : 1));
       this.flash.position.copy(muzzleOffset(this.current)).add(this.mesh.position);
     } else {
       this.flash.visible = false;

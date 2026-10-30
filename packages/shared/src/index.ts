@@ -2,6 +2,7 @@ export * from "./constants.js";
 export * from "./math.js";
 export * from "./room.js";
 export * from "./weapons.js";
+export * from "./cosmetics.js";
 export * from "./map/index.js";
 export * from "./sim/types.js";
 export * from "./sim/inputQueue.js";

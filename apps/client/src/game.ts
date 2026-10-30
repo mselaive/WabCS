@@ -36,6 +36,8 @@ import {
   eyeHeightOf,
   grenadeKind,
   heightOf,
+  isSilenced,
+  knifeSkin,
   mapByIndex,
   rayAabb,
   recoilOffset,
@@ -93,6 +95,8 @@ export class Game {
 
   private net: Net | null = null;
   private myId = -1;
+  /** Número de ronda del último snapshot: con él se sortea la skin del cuchillo. */
+  private roundNumber = 1;
   private hostId = -1;
   private roster: PlayerMeta[] = [];
   private winRounds = 8;
@@ -486,6 +490,7 @@ export class Game {
         this.ui.setSpectating(null);
         this.viewModel.setHidden(true);
         const round = unpackRound(msg.rd);
+        this.roundNumber = round.number;
         this.ui.showResult(msg.winner, round.score, msg.st, this.myTeam);
         break;
       }
@@ -641,7 +646,7 @@ export class Game {
     }
     const avatar = this.avatars.get(ev.byId);
     const from = avatar && avatar.root.visible ? avatar.muzzle.clone() : new THREE.Vector3(ev.x, ev.y, ev.z);
-    if (!own && weapon(ev.weapon).melee === 0) this.effects.flash(from, 10);
+    if (!own && weapon(ev.weapon).melee === 0) this.effects.flash(from, isSilenced(ev.weapon) ? 4 : 10);
     let prevWall: THREE.Vector3 | null = null;
     for (let i = 0; i + 3 < ev.hits.length; i += 4) {
       const to = new THREE.Vector3(ev.hits[i]!, ev.hits[i + 1]!, ev.hits[i + 2]!);
@@ -650,7 +655,7 @@ export class Game {
       const start = prevWall && weapon(ev.weapon).wall > 0 ? prevWall : from;
       prevWall = kind === HIT_WORLD ? to : null;
       if (!own && weapon(ev.weapon).melee === 0) {
-        this.effects.tracer(start, to);
+        if (!isSilenced(ev.weapon)) this.effects.tracer(start, to);
         this.whizIfClose(start, to);
       }
       if (kind === HIT_WORLD) {
@@ -899,6 +904,7 @@ export class Game {
       }
       this.wasReloading = s.reloading;
 
+      this.viewModel.setLook(s.team, knifeSkin(this.myId, this.roundNumber));
       this.viewModel.setWeapon(wid);
       this.viewModel.setHidden(s.scoped);
       let lookDx = this.input.yaw - this.prevYaw;
@@ -1006,7 +1012,7 @@ export class Game {
     const from = muzzleOffset(shot.weapon).add(this.viewModel.root.position);
     this.camera.updateMatrixWorld();
     this.camera.localToWorld(from);
-    this.effects.flash(from, 14);
+    this.effects.flash(from, isSilenced(shot.weapon) ? 5 : 14);
     // La vaina sale hacia la derecha de la cámara.
     const right = new THREE.Vector3(Math.cos(this.input.yaw), 0, -Math.sin(this.input.yaw));
     this.effects.shell(this.viewModel.ejectPoint(this.camera, new THREE.Vector3()), right);
@@ -1031,7 +1037,7 @@ export class Game {
           head = oy + d.y * te - e.y > h - HEAD_HEIGHT;
         }
         const to = new THREE.Vector3(ox + d.x * t, oy + d.y * t, oz + d.z * t);
-        this.effects.tracer(seg.from === 0 ? from : new THREE.Vector3(ox + d.x * seg.from, oy + d.y * seg.from, oz + d.z * seg.from), to);
+        if (!isSilenced(shot.weapon)) this.effects.tracer(seg.from === 0 ? from : new THREE.Vector3(ox + d.x * seg.from, oy + d.y * seg.from, oz + d.z * seg.from), to);
         if (victim) {
           this.effects.blood(to, head);
           anyHit = true;
@@ -1068,7 +1074,7 @@ export class Game {
       }
       avatar.root.visible = true;
       avatar.setLabelVisible(p.team === myTeam);
-      avatar.update(p, dt);
+      avatar.update(p, dt, knifeSkin(p.id, this.roundNumber));
     }
     for (const [id, avatar] of this.avatars) if (!present.has(id)) avatar.root.visible = false;
   }

@@ -166,13 +166,19 @@ cualquiera las levanta con `E` (y las propias se tiran con `G`, para pasarle el 
 | MP5-SD | $1500 | 27 | 30 + 120 | auto | la más rápida para moverse |
 | Nova | $1050 | 26 × 9 | 8 + 32 | 1/0,9 s | escopeta: devastadora de cerca, inútil de lejos |
 | AK-47 (T) | $2700 | 36 | 30 + 90 | auto | mata de un tiro en la cabeza con casco |
-| M4A4 (CT) | $3100 | 33 | 30 + 90 | auto | más precisa, menos daño |
+| M4A1-S (CT) | $2900 | 38 | 20 + 80 | auto | silenciada: sin estampido ni trazadores; mata de un tiro en la cabeza con casco |
 | AWP | $4750 | 115 | 5 + 30 | 1/1,5 s | mata de un tiro al cuerpo; sin la mira es una moneda al aire |
 | Chaleco | $650 | | | | 100 de chaleco |
 | Chaleco y casco | $1000 | | | | sólo el casco, $350, si ya tenés el chaleco entero |
 | Granada HE | $300 | 98 | 1 | | estalla a los 1,6 s; el daño cae con la distancia y una pared lo frena |
 | Flash | $200 | | 2 | | ciega al que la ve: hasta 3,6 s de frente, menos de costado y de lejos |
 | Humo | $300 | | 1 | | 15 s de nube de 3 m que tapa la vista (no las balas) |
+
+Cada equipo tiene su cuchillo: los T llevan una **bayoneta M9** (hoja ancha con sierra en el lomo y
+anillo en la guarda) y los CT un **karambit** (hoja curva como una garra, con el anillo para el
+dedo). En **una de cada diez rondas** a cada jugador le puede tocar la hoja en **rubí, zafiro o
+esmeralda**: lo sortea un hash del jugador y del número de ronda (`knifeSkin`), así que todos ven
+la misma sin mandar nada por la red. En la carrera de armas, que no tiene rondas, dura el partido.
 
 ### Granadas
 
@@ -188,7 +194,7 @@ El daño cae con la distancia (cada arma a su ritmo: la escopeta pierde la mitad
 casi nada) y según dónde pega: **cabeza ×4**, cuerpo ×1, piernas ×0,75. El chaleco absorbe parte
 del daño al cuerpo (y a la cabeza, con casco) y se va gastando; las piernas no tienen chaleco.
 El AWP mata de un tiro al cuerpo o a la cabeza aunque haya chaleco (a las piernas deja 86), y el
-AK a la cabeza mata con casco puesto; el M4 no, como en CS.
+AK y la M4A1-S a la cabeza matan con casco puesto; la MP5 no, como en CS.
 Las fórmulas son las de CS (`applyArmor` en `combat.ts`).
 
 **Paredes finas** (`bulletSegments`): los rifles y la Deagle atraviesan tabiques finos (el AK hasta

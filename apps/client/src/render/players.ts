@@ -52,6 +52,7 @@ export class PlayerAvatar {
   private readonly legR: THREE.Group;
   private weaponGroup: THREE.Group | null = null;
   private weaponId = -1;
+  private weaponSkin = 0;
   private readonly label: THREE.Sprite;
   private walk = 0;
   private breath = Math.random() * 6;
@@ -166,20 +167,21 @@ export class PlayerAvatar {
     this.label.visible = v;
   }
 
-  setWeapon(id: number): void {
-    if (id === this.weaponId) return;
+  setWeapon(id: number, skin = 0): void {
+    if (id === this.weaponId && skin === this.weaponSkin) return;
     if (this.weaponGroup) this.arms.remove(this.weaponGroup);
-    this.weaponGroup = buildWeaponMesh(id, false);
+    this.weaponGroup = buildWeaponMesh(id, false, { team: this.team, skin });
     this.weaponGroup.position.set(0.12, 0.0, -0.4);
     this.arms.add(this.weaponGroup);
     this.weaponId = id;
+    this.weaponSkin = skin;
   }
 
-  /** Posición, orientación y pose desde un snapshot interpolado. */
-  update(p: UnpackedPlayer, dt: number): void {
+  /** Posición, orientación y pose desde un snapshot interpolado. `skin` es la de su cuchillo. */
+  update(p: UnpackedPlayer, dt: number, skin = 0): void {
     this.root.position.set(p.x, p.y, p.z);
     this.root.rotation.y = p.yaw;
-    this.setWeapon(p.weapon);
+    this.setWeapon(p.weapon, skin);
     this.helmet.visible = p.helmet;
     this.hat.visible = !p.helmet;
 

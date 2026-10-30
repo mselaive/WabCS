@@ -18,7 +18,7 @@ import {
   TEAM_T,
   WIN_REWARD,
 } from "../constants.js";
-import { AK47, AWP, GLOCK, KNIFE, M4A4, USP, buyItemIndex, weapon } from "../weapons.js";
+import { AK47, AWP, GLOCK, KNIFE, M4A1S, USP, buyItemIndex, weapon } from "../weapons.js";
 import { damagePlayer } from "./combat.js";
 import { canBuy } from "./inventory.js";
 import { createGameState, createPlayer, step } from "./step.js";
@@ -97,7 +97,7 @@ describe("las rondas", () => {
     const [t, ct] = state.players;
     t!.slots[0] = AK47;
     t!.ammo[0] = 30;
-    ct!.slots[0] = M4A4;
+    ct!.slots[0] = M4A1S;
     run(state, events, FREEZE_TICKS);
     ct!.alive = false;
     step(state, noInputs, events, BODEGA);

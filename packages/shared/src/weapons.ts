@@ -93,8 +93,8 @@ export const WEAPONS: readonly WeaponDef[] = [
     auto: true, pellets: 1, spread: 0.0045, spreadShot: 0.0042, spreadMove: 0.06, speed: 4.6, zoom: 0, kick: 0.016, recoilUp: 0.11, recoilSide: 0.045, melee: 0, wall: 0.4,
   }),
   W({
-    id: 6, name: "M4A4", short: "M4A4", slot: SLOT_PRIMARY, price: 3100, team: TEAM_CT,
-    damage: 33, range: 0.97, pen: 0.7, mag: 30, reserve: 90, fireTicks: 2, reloadTicks: 62, drawTicks: 8,
+    id: 6, name: "M4A1-S", short: "M4A1-S", slot: SLOT_PRIMARY, price: 2900, team: TEAM_CT,
+    damage: 38, range: 0.99, pen: 0.7, mag: 20, reserve: 80, fireTicks: 2, reloadTicks: 62, drawTicks: 8,
     auto: true, pellets: 1, spread: 0.004, spreadShot: 0.0036, spreadMove: 0.055, speed: 4.8, zoom: 0, kick: 0.013, recoilUp: 0.085, recoilSide: 0.035, melee: 0, wall: 0.35,
   }),
   W({
@@ -142,11 +142,16 @@ export const USP = 2;
 export const DEAGLE = 3;
 export const MP5 = 4;
 export const AK47 = 5;
-export const M4A4 = 6;
+export const M4A1S = 6;
 export const NOVA = 7;
 export const AWP = 8;
 /** Pseudoarma de los eventos de muerte por caída (no está en WEAPONS). */
 export const FALL_WEAPON = 13;
+
+/** Las silenciadas (USP-S y M4A1-S): sin estampido, fogonazo chico y sin trazadores. */
+export function isSilenced(id: number): boolean {
+  return id === USP || id === M4A1S;
+}
 
 export function weapon(id: number): WeaponDef {
   return WEAPONS[id] ?? WEAPONS[KNIFE]!;
@@ -196,7 +201,7 @@ export const BUY_ITEMS: readonly BuyItem[] = [
   { key: "mp5", name: "MP5-SD", price: 1500, weapon: MP5, team: -1 },
   { key: "nova", name: "Nova", price: 1050, weapon: NOVA, team: -1 },
   { key: "ak", name: "AK-47", price: 2700, weapon: AK47, team: TEAM_T },
-  { key: "m4", name: "M4A4", price: 3100, weapon: M4A4, team: TEAM_CT },
+  { key: "m4", name: "M4A1-S", price: 2900, weapon: M4A1S, team: TEAM_CT },
   { key: "awp", name: "AWP", price: 4750, weapon: AWP, team: -1 },
   { key: "kevlar", name: "Chaleco", price: 650, weapon: -1, team: -1, armor: "kevlar" },
   { key: "helmet", name: "Chaleco y casco", price: 1000, weapon: -1, team: -1, armor: "helmet" },

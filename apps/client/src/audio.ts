@@ -1,4 +1,4 @@
-import { AK47, AWP, DEAGLE, GLOCK, KNIFE, M4A4, MP5, NOVA, USP } from "@wabcs/shared";
+import { AK47, AWP, DEAGLE, GLOCK, KNIFE, M4A1S, MP5, NOVA, USP } from "@wabcs/shared";
 
 /**
  * Sonido generado por código (sin archivos): tiros, recargas, pasos, impactos
@@ -131,9 +131,10 @@ export class Audio {
         this.noise(0.11, 1600, g * 0.9, pan);
         this.tone(170, 0.08, g * 0.5, pan, "sawtooth", 60);
         break;
-      case M4A4:
-        this.noise(0.09, 2000, g * 0.8, pan);
-        this.tone(210, 0.07, g * 0.4, pan, "square", 70);
+      case M4A1S:
+        // Silenciada: un golpe seco y bajo, sin estampido.
+        this.noise(0.07, 900, g * 0.35, pan, "lowpass");
+        this.tone(160, 0.05, g * 0.15, pan, "sine", 70);
         break;
       case NOVA:
         this.noise(0.22, 900, g * 1.1, pan);

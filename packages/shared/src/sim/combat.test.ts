@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BODEGA } from "../map/bodega.js";
 import { HEAD_HEIGHT, LAG_COMP_MAX_TICKS, TAG_TICKS, TEAM_CT, TEAM_T, ZONE_BODY, ZONE_HEAD, ZONE_LEGS } from "../constants.js";
-import { AK47, AWP, GLOCK, KNIFE, M4A4, NOVA, SLOT_PRIMARY, SLOT_SECONDARY, USP, weapon } from "../weapons.js";
+import { AK47, AWP, GLOCK, KNIFE, M4A1S, MP5, NOVA, SLOT_PRIMARY, SLOT_SECONDARY, USP, weapon } from "../weapons.js";
 import { applyArmor, recordTrail, resetTrail, resolveShot, shotDirections, shotRewind, stepWeaponState } from "./combat.js";
 import { eyeHeightOf, maxSpeedOf, stepPlayerMovement } from "./movement.js";
 import { createGameState, createPlayer } from "./step.js";
@@ -94,11 +94,13 @@ describe("el chaleco", () => {
     expect(Math.round(applyArmor(p, awp.damage, ZONE_BODY, awp.pen))).toBeGreaterThanOrEqual(100);
     p.armor = 100;
     expect(applyArmor(p, awp.damage * 0.75, ZONE_LEGS, awp.pen)).toBeLessThan(100);
-    // El AK a la cabeza con casco también mata; el M4 no, como en CS.
+    // El AK y la M4A1-S a la cabeza con casco también matan; la MP5 no, como en CS.
     p.armor = 100;
     expect(applyArmor(p, weapon(AK47).damage * 4, ZONE_HEAD, weapon(AK47).pen)).toBeGreaterThanOrEqual(100);
     p.armor = 100;
-    expect(applyArmor(p, weapon(M4A4).damage * 4, ZONE_HEAD, weapon(M4A4).pen)).toBeLessThan(100);
+    expect(applyArmor(p, weapon(M4A1S).damage * 4, ZONE_HEAD, weapon(M4A1S).pen)).toBeGreaterThanOrEqual(100);
+    p.armor = 100;
+    expect(applyArmor(p, weapon(MP5).damage * 4, ZONE_HEAD, weapon(MP5).pen)).toBeLessThan(100);
   });
 
   it("sin casco la cabeza no se protege", () => {
